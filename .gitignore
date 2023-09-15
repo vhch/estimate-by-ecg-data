@@ -130,6 +130,7 @@ dmypy.json
 
 best_model_checkpoint.pth
 model_checkpoint.pth
+*.pth
 dataset/
 result.csv
 submission.csv

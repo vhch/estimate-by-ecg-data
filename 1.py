@@ -11,7 +11,7 @@ from customdataset import CustomDataset
 
 
 # GPU 사용 설정
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 # Paths
@@ -34,13 +34,13 @@ val_len = len(dataset) - train_len
 
 train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
 
-batch_size = 100
+batch_size = 256
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
 
-# model = Model().to(device)
-model = Model2().to(device)
+model = Model().to(device)
+# model = Model2().to(device)
 
 # Loss and Optimizer
 num_epochs = 200
@@ -61,22 +61,19 @@ for epoch in range(num_epochs):
     for batch_idx, (data, gender, targets) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")):
         # forward
         data, gender, targets = data.to(device), gender.to(device), targets.to(device)
-        with autocast():
-            output = model(data)
-            # print(data.shape)
-            # print(gender.shape)
-            # print(output.shape)
-            loss = criterion(output.reshape(-1), targets.reshape(-1))
-
+        output = model(data)
+        # print(data.shape)
+        # print(gender.shape)
+        # print(output.shape)
+        loss = criterion(output.reshape(-1), targets.reshape(-1))
         train_loss += loss.item()
-        scaler.scale(loss).backward()
 
-        if (batch_idx + 1) % accumulation_steps == 0:
-            scaler.step(optimizer)
-            scaler.update()
-            optimizer.zero_grad()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-            scheduler.step()
+        scheduler.step()
+
 
     train_loss /= len(train_loader)
 
@@ -98,10 +95,9 @@ for epoch in range(num_epochs):
         checkpoint = {
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'scaler_state_dict': scaler.state_dict(),
-            'scheduler_state_dict': scheduler.state_dict()
+            'scaler_state_dict': scaler.state_dict()
         }
-        torch.save(checkpoint, 'model_checkpoint.pth')
+        torch.save(checkpoint, 'test.pth')
         # torch.save(model.state_dict(), 'best_model_checkpoint.pth')
         print(f"epoch:{epoch}, New best validation loss ({best_val_loss:.4f}), saving model...")
 
