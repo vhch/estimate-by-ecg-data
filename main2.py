@@ -20,44 +20,55 @@ df2 = pd.read_csv(f'{csv_path_child}')
 df1['FOLDER'] = numpy_folder_adult
 df2['FOLDER'] = numpy_folder_child
 
-gender_mapping = {'male': 1, 'female': 0}  # 예를 들어 이렇게 매핑. 실제 데이터에 맞게 조정해야 합니다.
+gender_mapping = {'MALE': 1, 'FEMALE': 0}
 df1['GENDER'] = df1['GENDER'].map(gender_mapping)
 df2['GENDER'] = df2['GENDER'].map(gender_mapping)
 
 # 두 데이터프레임 합치기
 df = pd.concat([df1, df2], ignore_index=True)
 
-def data_generator(df):
-    n = len(df)
-    
+# 전체 데이터에서 학습 및 검증 데이터 분할
+train_df, valid_df = train_test_split(df, test_size=0.1, random_state=42)
+
+
+def data_generator(train_df):
+    n = len(train_df)
+
     for start in range(0, n, BATCH_SIZE):
         end = min(start + BATCH_SIZE, n)
-        subset = df.iloc[start:end]
-        
+        subset = train_df.iloc[start:end]
+
         data = []
+        labels = []
         for _, row in subset.iterrows():
             filename = row['FILENAME']
             folder = row['FOLDER']
             path = os.path.join(folder, f"{filename}.npy")
             data.append(np.load(path).flatten())
-        
-        batch_df = pd.DataFrame(data)
-        X = batch_df
-        y = subset['AGE']
-        
-        yield X, y
+            labels.append(row['AGE'])
 
-gen = data_generator(df)
+        yield pd.DataFrame(data), np.array(labels)
+
+
+gen = data_generator(train_df)
+
+# 검증 데이터 미리 로드
+valid_data = []
+valid_labels = []
+for _, row in valid_df.iterrows():
+    filename = row['FILENAME']
+    folder = row['FOLDER']
+    path = os.path.join(folder, f"{filename}.npy")
+    valid_data.append(np.load(path).flatten())
+    valid_labels.append(row['AGE'])
+X_valid = pd.DataFrame(valid_data)
+y_valid = np.array(valid_labels)
 
 model = XGBRegressor(objective='reg:squarederror')
 
-# 초기 데이터 분할
-X_train, X_test, y_train, y_test = train_test_split(df.drop(columns=['FILENAME', 'FOLDER', 'AGE']), df['AGE'], test_size=0.1, random_state=42)
+for X_batch, y_batch in gen:
+    model.fit(X_batch, y_batch, eval_set=[(X_valid, y_valid)], eval_metric='mae', early_stopping_rounds=10, verbose=True)
 
-for batch_X, batch_y in gen:
-    model.fit(batch_X, batch_y, eval_set=[(X_test, y_test)], early_stopping_rounds=10, verbose=False)
-
-y_pred = model.predict(X_test)
-mae = mean_absolute_error(y_test, y_pred)
+y_pred = model.predict(X_valid)
+mae = mean_absolute_error(y_valid, y_pred)
 print(f'Mean Absolute Error: {mae}')
-
