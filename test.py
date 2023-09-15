@@ -9,8 +9,10 @@ from model import Model
 # 모델 로드
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = Model()
-model.load_state_dict(torch.load('best_model_checkpoint.pth'))
-model = model.to(device)
+checkpoint = torch.load('best_model_checkpoint.pth')
+model.load_state_dict(checkpoint['model_state_dict'])
+# model.load_state_dict(torch.load('best_model_checkpoint.pth'))
+model = model.to(device).half()
 model.eval()
 
 
@@ -33,4 +35,4 @@ df = pd.read_csv(csv_path)
 df['AGE'] = predicted_ages
 
 # 수정된 CSV 파일 저장
-df.to_csv('result.csv', index=False)
+df.to_csv('submission.csv', index=False)

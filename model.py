@@ -16,11 +16,12 @@ class Model(nn.Module):
         )
 
     def forward(self, x):
+        x = x.reshape(-1, 5000 * 12)
         return self.fc(x)
 
 
 class Model2(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, num_series=12, output_size=1):
+    def __init__(self, input_size=1, hidden_size=128, num_layers=2, num_series=12, output_size=1):
         super().__init__()
 
         self.lstms = nn.ModuleList([nn.LSTM(input_size, hidden_size, num_layers, batch_first=True) for _ in range(num_series)])
