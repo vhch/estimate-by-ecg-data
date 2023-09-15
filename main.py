@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, random_split, ConcatDataset
 from tqdm.auto import tqdm
 from transformers import get_cosine_schedule_with_warmup
 
-from model import Model
+from model import *
 from customdataset import CustomDataset
 
 
@@ -24,27 +24,20 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
 dataset = ConcatDataset([dataset_adult, dataset_child])
 
-dataset = dataset_adult
+# dataset = dataset_adult
 
-# for i in range(5):
-#     data_sample, gender_sample, age_sample = dataset[i]
-#     print(f"Sample {i+1}:")
-#     print(data_sample.shape)
-#     print(gender_sample)
-#     print(age_sample)
-#     print("------")
-# exit()
 
 train_len = int(0.9 * len(dataset))
 val_len = len(dataset) - train_len
 
 train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
 
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=64)
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=32)
 
 
-model = Model().to(device)
+# model = Model().to(device)
+model = Model2(input_size=1, hidden_size=128, num_layers=2).to(device)
 
 # Loss and Optimizer
 num_epochs = 100

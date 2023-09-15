@@ -16,7 +16,7 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         filename = self.df.iloc[idx]['FILENAME']
         data = np.load(self.numpy_folder + '/' + filename + '.npy')
-        # data = data.reshape(12, 5000)
+        data = data.reshape(12, 5000)
         age = self.df.iloc[idx]['AGE']
         if self.df.iloc[idx]['GENDER'] == 'MALE':
             gender = 1
@@ -39,7 +39,7 @@ class InferenceDataset(Dataset):
     def __getitem__(self, idx):
         filename = self.df.iloc[idx]['FILENAME']
         data = np.load(self.numpy_folder + '/' + filename + '.npy')
-        # data = data.reshape(12, 5000)
+        data = data.reshape(12, 5000)
         if self.df.iloc[idx]['GENDER'] == 'MALE':
             gender = 1
         elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
