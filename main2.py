@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from xgboost import XGBRegressor
@@ -21,18 +22,19 @@ df2['FOLDER'] = numpy_folder_child
 # 두 데이터프레임 합치기
 df = pd.concat([df1, df2], ignore_index=True)
 
-# numpy 데이터 로드 함수
-def load_and_flatten(row):
-    filename = row['FILENAME']
-    folder = row['FOLDER']
-    arr = np.load(f'{folder}/{filename}.npy')
-    return arr.flatten()
+# 메모리에 모든 npy 파일 로드하기
+file_data = {}
+for filename in df['FILENAME']:
+    if filename in file_data:  # 이미 로딩한 경우 스킵
+        continue
 
-# 병렬 처리를 사용하여 데이터 로딩
-with ProcessPoolExecutor() as executor:
-    data = list(executor.map(load_and_flatten, df.to_dict('records')))
+    path = os.path.join(numpy_folder_adult, f"{filename}.npy")
+    if not os.path.exists(path):  # 다른 폴더에서 찾기
+        path = os.path.join(numpy_folder_child, f"{filename}.npy")
+    file_data[filename] = np.load(path).flatten()
 
-# numpy 데이터를 pandas DataFrame 형식으로 변경
+# 메모리에 로딩한 데이터를 사용하여 DataFrame 생성하기
+data = [file_data[filename] for filename in df['FILENAME']]
 numpy_df = pd.DataFrame(data)
 
 # 원본 df와 numpy_df를 연결
