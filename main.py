@@ -76,16 +76,6 @@ for epoch in range(num_epochs):
 
             scheduler.step()
 
-        # outputs = model(data)
-        # loss = criterion(outputs, targets.unsqueeze(1))
-        # train_loss += loss.item()
-        #
-        # # backward
-        # loss.backward()
-        # optimizer.step()
-        #
-        # scheduler.step()
-
     train_loss /= len(train_loader)
 
     print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}")

@@ -3,13 +3,13 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 
 from customdataset import CustomDataset, InferenceDataset
-from model import Model
+from model import *
 
 
 # 모델 로드
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = Model()
-checkpoint = torch.load('best_model_checkpoint.pth')
+model = Model2()
+checkpoint = torch.load('model_checkpoint.pth')
 model.load_state_dict(checkpoint['model_state_dict'])
 # model.load_state_dict(torch.load('best_model_checkpoint.pth'))
 model = model.to(device).half()
@@ -26,7 +26,7 @@ infer_loader = DataLoader(infer_dataset, batch_size=32)
 predicted_ages = []
 with torch.no_grad():
     for data, gender in infer_loader:
-        data, gender = data.to(device), gender.to(device)
+        data, gender = data.to(device).half(), gender.to(device).half()
         outputs = model(data)
         predicted_ages.extend(outputs.cpu().numpy().flatten())
 

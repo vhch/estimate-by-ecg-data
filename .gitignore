@@ -129,5 +129,7 @@ dmypy.json
 .pyre/
 
 best_model_checkpoint.pth
+model_checkpoint.pth
 dataset/
 result.csv
+submission.csv
