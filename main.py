@@ -39,14 +39,15 @@ batch_size = 100
 num_epochs = 200
 accumulation_steps = 1
 
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=batch_size)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
+val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True)
 
 
 # model = Model().to(device)
 model = Lstm().to(device)
 
 # Loss and Optimizer
+# criterion = nn.HuberLoss()
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
 # optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
@@ -66,7 +67,7 @@ if os.path.exists(checkpoint_path):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     scaler.load_state_dict(checkpoint['scaler_state_dict'])
     scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-    start_epoch = checkpoint['epoch'] + 1
+    start_epoch = checkpoint['epoch']
     best_val_loss = checkpoint['best_val_loss']
 
 # Train the model

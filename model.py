@@ -66,9 +66,9 @@ class BERTforECG(nn.Module):
         return final_output
 
 
-class CNN1D(nn.Module):
+class C(nn.Module):
     def __init__(self, in_channels, out_channels=256):
-        super(CNN1D, self).__init__()
+        super().__init__()
         
         self.cnn = nn.Sequential(
             nn.Conv1d(in_channels=in_channels, out_channels=128, kernel_size=5, stride=2, padding=2),
@@ -85,7 +85,7 @@ class CNNBERT(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
         
-        self.cnn = CNN1D(in_channels)
+        self.cnn = C(in_channels)
 
         self.config = BertConfig(
             hidden_size=512,
@@ -107,7 +107,7 @@ class CNNBERT(nn.Module):
 
 class Cnn1d(nn.Module):
     def __init__(self):
-        super(AgeEstimator, self).__init__()
+        super().__init__()
 
         self.cnn = nn.Sequential(
             nn.Conv1d(in_channels=12, out_channels=32, kernel_size=5, stride=1, padding=2),
@@ -133,3 +133,46 @@ class Cnn1d(nn.Module):
         x = self.fc(x)
         return x
 
+
+class CNNTOLSTM(nn.Module):
+    def __init__(self):
+        super(CNNTOLSTM, self).__init__()
+        
+        # CNN layers
+        self.conv1 = nn.Conv1d(in_channels=12, out_channels=16, kernel_size=5, stride=1, padding=2)
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
+        self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.relu = nn.ReLU()
+        
+        # After the CNN layers, output channels = 32, and after pooling, seq_len = 1250
+        # Hence, before passing to LSTM, we reshape it to have a seq_len of 1250 and feature_dim of 32
+        
+        self.lstm = nn.LSTM(input_size=32, hidden_size=100, num_layers=1, batch_first=True)
+        
+        # Fully connected layer
+        self.fc = nn.Linear(in_features=100, out_features=1)
+
+    def forward(self, x):
+        # CNN
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        
+        x = self.conv2(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        
+        # LSTM expects input of shape (batch, seq_len, input_size)
+        # So, we reshape the tensor such that seq_len is 1250 and input_size is 32
+        x = x.permute(0, 2, 1)
+        
+        # LSTM
+        lstm_out, _ = self.lstm(x)
+        
+        # Take the output from the last time-step
+        x = lstm_out[:, -1, :]
+        
+        # Fully connected layer
+        x = self.fc(x)
+        
+        return x
