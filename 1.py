@@ -11,7 +11,7 @@ from customdataset import CustomDataset
 
 
 # GPU 사용 설정
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 # Paths
@@ -97,7 +97,7 @@ for epoch in range(num_epochs):
             'optimizer_state_dict': optimizer.state_dict(),
             'scaler_state_dict': scaler.state_dict()
         }
-        torch.save(checkpoint, 'test.pth')
+        torch.save(checkpoint, 'nofl.pth')
         # torch.save(model.state_dict(), 'best_model_checkpoint.pth')
         print(f"epoch:{epoch}, New best validation loss ({best_val_loss:.4f}), saving model...")
 

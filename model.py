@@ -48,7 +48,7 @@ class BERTforECG(nn.Module):
         self.config = BertConfig(
             hidden_size=500,
             num_hidden_layers=6,
-            num_attention_heads=8,
+            num_attention_heads=10,
             intermediate_size=2048
         )
         self.bert = BertModel(self.config)

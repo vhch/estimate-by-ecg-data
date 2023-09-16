@@ -11,7 +11,7 @@ from customdataset import CustomDataset
 
 
 # GPU 사용 설정
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 # Paths
@@ -34,13 +34,14 @@ val_len = len(dataset) - train_len
 
 train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
 
-batch_size = 100
+batch_size = 256
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
 
 # model = Model().to(device)
-model = BERTforECG.to(device)
+model = BERTforECG()
+model = model.to(device)
 
 # Loss and Optimizer
 num_epochs = 200
@@ -66,6 +67,8 @@ for epoch in range(num_epochs):
             # print(data.shape)
             # print(gender.shape)
             # print(output.shape)
+            # print(targets.shape)
+            # exit()
             loss = criterion(output.reshape(-1), targets.reshape(-1))
 
         train_loss += loss.item()
@@ -101,7 +104,7 @@ for epoch in range(num_epochs):
             'scaler_state_dict': scaler.state_dict(),
             'scheduler_state_dict': scheduler.state_dict()
         }
-        torch.save(checkpoint, 'model_checkpoint.pth')
+        torch.save(checkpoint, 'bert.pth')
         # torch.save(model.state_dict(), 'best_model_checkpoint.pth')
         print(f"epoch:{epoch}, New best validation loss ({best_val_loss:.4f}), saving model...")
 
