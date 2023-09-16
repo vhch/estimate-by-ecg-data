@@ -40,6 +40,26 @@ class Lstm(nn.Module):
         return final_output
 
 
+class Lstm2(nn.Module):
+    def __init__(self, input_size=1, hidden_size=64, num_layers=2, num_series=12, output_size=1):
+        super().__init__()
+
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size * num_series, output_size)
+        self.num_series = num_series
+
+    def forward(self, x):
+        outputs = []
+        x = x.unsqueeze(-1)
+        for i in range(self.num_series):
+            out, _ = self.lstm(x[:, i, :, :])
+            outputs.append(out[:, -1, :])
+
+        outputs_combined = torch.cat(outputs, dim=1)
+        final_output = self.fc(outputs_combined)
+        return final_output
+
+
 # Model with BERT
 class BERTforECG(nn.Module):
     def __init__(self, bert_name="bert-base-uncased"):
@@ -81,7 +101,8 @@ class C(nn.Module):
     def forward(self, x):
         return self.cnn(x)
 
-class CNNBERT(nn.Module):
+
+class CNNtoBERT(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
         
@@ -176,3 +197,44 @@ class CNNTOLSTM(nn.Module):
         x = self.fc(x)
         
         return x
+
+
+class LSTMtoBERT(nn.Module):
+    def __init__(self, input_size=1, hidden_size=512, num_layers=1):
+        super().__init__()
+
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+
+        self.config = BertConfig(
+            hidden_size=512,
+            num_hidden_layers=6,
+            num_attention_heads=8,
+            intermediate_size=2048
+        )
+        self.bert = BertModel(self.config)
+
+        # Adjust the output dimension based on the BERT config hidden size to your task
+        self.fc = nn.Linear(self.bert_config.hidden_size, 1)  # Predicting age
+
+    def forward(self, x):
+        # x shape: (batch_size, 12, 5000, 1)
+        x = x.unsquueze(-1)
+        batch_size, num_cases, seq_len, _ = x.size()
+
+        lstm_outputs = []
+        for i in range(num_cases):
+            # Passing each case through the LSTM
+            lstm_out, _ = self.lstm(x[:, i])
+            # Getting the last hidden state of the LSTM
+            lstm_outputs.append(lstm_out[:, -1, :])
+
+        # Stacking all the LSTM outputs
+        lstm_output = torch.stack(lstm_outputs, dim=1)  # shape: (batch_size, 12, hidden_dim)
+
+        # Passing through BERT
+        bert_output = self.bert(input_ids=None, inputs_embeds=lstm_output)['pooler_output']
+
+        # Final fully connected layer
+        out = self.fc(bert_output)
+
+        return out

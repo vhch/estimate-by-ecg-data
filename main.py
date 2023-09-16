@@ -25,10 +25,10 @@ numpy_folder_child = 'dataset/child/train/'
 dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
 dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
-dataset = ConcatDataset([dataset_adult, dataset_child])
+# dataset = ConcatDataset([dataset_adult, dataset_child])
 
-# dataset = dataset_adult
-dataset = dataset_child
+dataset = dataset_adult
+# dataset = dataset_child
 
 
 train_len = int(0.9 * len(dataset))
@@ -39,13 +39,14 @@ train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
 batch_size = 100
 num_epochs = 200
 accumulation_steps = 1
+checkpoint_path = 'lstm_adult-single.pth'
 
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True)
 
 
 # model = Model().to(device)
-model = Lstm().to(device)
+model = Lstm2().to(device)
 
 # Loss and Optimizer
 # criterion = nn.HuberLoss()
@@ -59,7 +60,6 @@ best_val_loss = float('inf')
 
 # Checkpoint 불러오기 (만약 있다면)
 start_epoch = 0
-checkpoint_path = 'lstm_child.pth'
 
 # 모델이 이미 있는 경우에만 실행
 if os.path.exists(checkpoint_path):
@@ -123,6 +123,6 @@ for epoch in range(start_epoch, num_epochs):
         }
         torch.save(checkpoint, f'{checkpoint_path}')
 
-        print(f"epoch:{epoch}, New best validation loss ({best_val_loss:.4f}), saving model...")
+        print(f"epoch:{epoch}, New best validation loss ({best_val_loss:.4f}), saving model: {checkpoint_path}")
 
     print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss:.4f}, best_val_loss: {best_val_loss}")

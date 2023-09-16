@@ -27,6 +27,8 @@ df2['GENDER'] = df2['GENDER'].map(gender_mapping)
 # 두 데이터프레임 합치기
 df = pd.concat([df1, df2], ignore_index=True)
 
+df = df1
+
 # 전체 데이터에서 학습 및 검증 데이터 분할
 train_df, valid_df = train_test_split(df, test_size=0.1, random_state=42)
 
@@ -64,11 +66,18 @@ for _, row in valid_df.iterrows():
 X_valid = pd.DataFrame(valid_data)
 y_valid = np.array(valid_labels)
 
-model = XGBRegressor(objective='reg:squarederror')
+model = XGBRegressor(objective='reg:squarederror', max_depth=9, n_estimators=1000, learning_rate=0.01, n_jobs=18, subsample=0.9, colsample_bytree=0.8)
 
 for X_batch, y_batch in gen:
-    model.fit(X_batch, y_batch, eval_set=[(X_valid, y_valid)], eval_metric='mae', early_stopping_rounds=10, verbose=True)
+    # model.fit(X_batch, y_batch, eval_set=[(X_valid, y_valid)], eval_metric='mae', verbose=True)
+    model.fit(X_batch, y_batch, eval_set=[(X_valid, y_valid)], eval_metric='mae', early_stopping_rounds=100, verbose=True)
 
 y_pred = model.predict(X_valid)
 mae = mean_absolute_error(y_valid, y_pred)
 print(f'Mean Absolute Error: {mae}')
+
+model.save_model('xgb_model.json')
+
+# # 모델 불러오기
+# loaded_model = xgb.Booster()
+# loaded_model.load_model('xgb_model.json')
