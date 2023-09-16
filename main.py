@@ -29,6 +29,10 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
 dataset = dataset_adult
 # dataset = dataset_child
+batch_size = 100
+num_epochs = 200
+accumulation_steps = 1
+checkpoint_path = 'lstm_adult-single.pth'
 
 
 train_len = int(0.9 * len(dataset))
@@ -36,10 +40,6 @@ val_len = len(dataset) - train_len
 
 train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
 
-batch_size = 100
-num_epochs = 200
-accumulation_steps = 1
-checkpoint_path = 'lstm_adult-single.pth'
 
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True)
@@ -68,7 +68,7 @@ if os.path.exists(checkpoint_path):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     scaler.load_state_dict(checkpoint['scaler_state_dict'])
     scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-    start_epoch = checkpoint['epoch']
+    start_epoch = checkpoint['epoch'] + 1
     best_val_loss = checkpoint['best_val_loss']
 
 # Train the model
@@ -123,6 +123,6 @@ for epoch in range(start_epoch, num_epochs):
         }
         torch.save(checkpoint, f'{checkpoint_path}')
 
-        print(f"epoch:{epoch}, New best validation loss ({best_val_loss:.4f}), saving model: {checkpoint_path}")
+        print(f"epoch:{epoch+1}, New best validation loss ({best_val_loss:.4f}), saving model: {checkpoint_path}")
 
     print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss:.4f}, best_val_loss: {best_val_loss}")

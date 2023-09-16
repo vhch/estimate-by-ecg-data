@@ -214,11 +214,11 @@ class LSTMtoBERT(nn.Module):
         self.bert = BertModel(self.config)
 
         # Adjust the output dimension based on the BERT config hidden size to your task
-        self.fc = nn.Linear(self.bert_config.hidden_size, 1)  # Predicting age
+        self.fc = nn.Linear(self.config.hidden_size, 1)  # Predicting age
 
     def forward(self, x):
         # x shape: (batch_size, 12, 5000, 1)
-        x = x.unsquueze(-1)
+        x = x.unsqueeze(-1)
         batch_size, num_cases, seq_len, _ = x.size()
 
         lstm_outputs = []
