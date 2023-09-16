@@ -8,7 +8,7 @@ from model import *
 
 # 모델 로드
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = Model2()
+model = Lstm()
 checkpoint = torch.load('model_checkpoint.pth')
 model.load_state_dict(checkpoint['model_state_dict'])
 # model.load_state_dict(torch.load('best_model_checkpoint.pth'))

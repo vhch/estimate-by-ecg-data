@@ -36,17 +36,17 @@ val_len = len(dataset) - train_len
 train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
 
 batch_size = 100
+num_epochs = 200
+accumulation_steps = 1
+
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
 
 # model = Model().to(device)
-model = Model2().to(device)
+model = Lstm().to(device)
 
 # Loss and Optimizer
-num_epochs = 200
-accumulation_steps = 1
-
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
 # optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))

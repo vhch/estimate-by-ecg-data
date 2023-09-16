@@ -21,7 +21,7 @@ class Model(nn.Module):
         return self.fc(x)
 
 
-class Model2(nn.Module):
+class Lstm(nn.Module):
     def __init__(self, input_size=1, hidden_size=64, num_layers=2, num_series=12, output_size=1):
         super().__init__()
 
@@ -104,3 +104,32 @@ class CNNBERT(nn.Module):
         pooled_output = outputs.pooler_output  # Taking pooled output. Change this depending on your requirement.
         
         return self.fc(pooled_output)
+
+class Cnn1d(nn.Module):
+    def __init__(self):
+        super(AgeEstimator, self).__init__()
+
+        self.cnn = nn.Sequential(
+            nn.Conv1d(in_channels=12, out_channels=32, kernel_size=5, stride=1, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2),
+            
+            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2),
+            
+            # 추가적인 층을 더 쌓을 수 있습니다
+        )
+
+        self.fc = nn.Sequential(
+            nn.Linear(64 * (5000 // 4), 128),  # 2번의 MaxPool1d에 의해 길이가 1/4로 줄었다고 가정
+            nn.ReLU(),
+            nn.Linear(128, 1)  # Age 예측을 위한 출력. 회귀 문제로 간주.
+        )
+    
+    def forward(self, x):
+        x = self.cnn(x)
+        x = x.view(x.size(0), -1)  # Flatten
+        x = self.fc(x)
+        return x
+
