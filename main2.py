@@ -1,74 +1,108 @@
-import os
-import pandas as pd
-import numpy as np
-from xgboost import XGBRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, random_split, ConcatDataset
+from torch.cuda.amp import autocast, GradScaler
+from tqdm.auto import tqdm
+from transformers import get_cosine_schedule_with_warmup
 
-BATCH_SIZE = 1000
+from model import *
+from customdataset import CustomDataset
 
+
+# GPU 사용 설정
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+scaler = GradScaler()
+
+# Paths
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
-csv_path_child = 'dataset/ECG_child_age_train.csv'
 numpy_folder_adult = 'dataset/adult/train/'
+
+csv_path_child = 'dataset/ECG_child_age_train.csv'
 numpy_folder_child = 'dataset/child/train/'
 
-# CSV 파일 불러오기
-df1 = pd.read_csv(f'{csv_path_adult}')
-df2 = pd.read_csv(f'{csv_path_child}')
+dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
+dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
-# 데이터프레임에 소속 폴더 컬럼 추가
-df1['FOLDER'] = numpy_folder_adult
-df2['FOLDER'] = numpy_folder_child
+dataset = ConcatDataset([dataset_adult, dataset_child])
 
-gender_mapping = {'MALE': 1, 'FEMALE': 0}
-df1['GENDER'] = df1['GENDER'].map(gender_mapping)
-df2['GENDER'] = df2['GENDER'].map(gender_mapping)
-
-# 두 데이터프레임 합치기
-df = pd.concat([df1, df2], ignore_index=True)
-
-# 전체 데이터에서 학습 및 검증 데이터 분할
-train_df, valid_df = train_test_split(df, test_size=0.1, random_state=42)
+# dataset = dataset_adult
 
 
-def data_generator(train_df):
-    n = len(train_df)
+train_len = int(0.9 * len(dataset))
+val_len = len(dataset) - train_len
 
-    for start in range(0, n, BATCH_SIZE):
-        end = min(start + BATCH_SIZE, n)
-        subset = train_df.iloc[start:end]
+train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
 
-        data = []
-        labels = []
-        for _, row in subset.iterrows():
-            filename = row['FILENAME']
-            folder = row['FOLDER']
-            path = os.path.join(folder, f"{filename}.npy")
-            data.append(np.load(path).flatten())
-            labels.append(row['AGE'])
-
-        yield pd.DataFrame(data), np.array(labels)
+batch_size = 100
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
 
-gen = data_generator(train_df)
+# model = Model().to(device)
+model = BERTforECG.to(device)
 
-# 검증 데이터 미리 로드
-valid_data = []
-valid_labels = []
-for _, row in valid_df.iterrows():
-    filename = row['FILENAME']
-    folder = row['FOLDER']
-    path = os.path.join(folder, f"{filename}.npy")
-    valid_data.append(np.load(path).flatten())
-    valid_labels.append(row['AGE'])
-X_valid = pd.DataFrame(valid_data)
-y_valid = np.array(valid_labels)
+# Loss and Optimizer
+num_epochs = 200
+accumulation_steps = 1
 
-model = XGBRegressor(objective='reg:squarederror')
+criterion = nn.MSELoss()  # Mean Squared Error for regression
+criterion_val = nn.L1Loss()
+optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
+scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
-for X_batch, y_batch in gen:
-    model.fit(X_batch, y_batch, eval_set=[(X_valid, y_valid)], eval_metric='mae', early_stopping_rounds=10, verbose=True)
+best_val_loss = float('inf')
 
-y_pred = model.predict(X_valid)
-mae = mean_absolute_error(y_valid, y_pred)
-print(f'Mean Absolute Error: {mae}')
+# Train the model
+for epoch in range(num_epochs):
+    model.train()
+    train_loss = 0.0
+
+    for batch_idx, (data, gender, targets) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")):
+        # forward
+        data, gender, targets = data.to(device), gender.to(device), targets.to(device)
+        with autocast():
+            output = model(data)
+            # print(data.shape)
+            # print(gender.shape)
+            # print(output.shape)
+            loss = criterion(output.reshape(-1), targets.reshape(-1))
+
+        train_loss += loss.item()
+        scaler.scale(loss).backward()
+
+        if (batch_idx + 1) % accumulation_steps == 0:
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad()
+
+            scheduler.step()
+
+    train_loss /= len(train_loader)
+
+    print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}")
+
+    model.eval()
+    val_loss = 0.0
+    with torch.no_grad():
+        for batch_idx, (data, gender, targets) in enumerate(val_loader):
+            data, gender, targets = data.to(device), gender.to(device), targets.to(device)
+            outputs = model(data)
+            val_loss += criterion_val(outputs.reshape(-1), targets.reshape(-1)).item()
+    # print(outputs[:5], targets[:5])
+    val_loss /= len(val_loader)
+
+    # Checkpoint 저장
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        checkpoint = {
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'scaler_state_dict': scaler.state_dict(),
+            'scheduler_state_dict': scheduler.state_dict()
+        }
+        torch.save(checkpoint, 'model_checkpoint.pth')
+        # torch.save(model.state_dict(), 'best_model_checkpoint.pth')
+        print(f"epoch:{epoch}, New best validation loss ({best_val_loss:.4f}), saving model...")
+
+    print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss:.4f}, best_val_loss: {best_val_loss}")
