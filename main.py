@@ -42,7 +42,7 @@ dataset = dataset_adult
 batch_size = 100
 num_epochs = 200
 accumulation_steps = 1
-checkpoint_path = 'lstmtobert_adult.pth'
+checkpoint_path = 'checkpoint/lstmtobert_adult.pth'
 
 
 train_len = int(0.9 * len(dataset))

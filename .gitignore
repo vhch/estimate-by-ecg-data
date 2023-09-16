@@ -134,3 +134,4 @@ model_checkpoint.pth
 dataset/
 result.csv
 submission.csv
+checkpoint/
