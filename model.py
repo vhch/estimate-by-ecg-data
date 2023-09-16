@@ -86,6 +86,7 @@ class BERTforECG(nn.Module):
         return final_output
 
 
+#######################################################################################################################################
 class C(nn.Module):
     def __init__(self, in_channels, out_channels=256):
         super().__init__()
@@ -102,7 +103,7 @@ class C(nn.Module):
         return self.cnn(x)
 
 
-class CNNtoBERT(nn.Module):
+class CNNtoB(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
         
@@ -125,6 +126,74 @@ class CNNtoBERT(nn.Module):
         pooled_output = outputs.pooler_output  # Taking pooled output. Change this depending on your requirement.
         
         return self.fc(pooled_output)
+#######################################################################################################################################
+
+
+class Cnntobert(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.conv1 = nn.Conv1d(in_channels=12, out_channels=16, kernel_size=5, stride=1, padding=2)
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
+        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2)
+        self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, stride=1, padding=2)
+        self.conv5 = nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, stride=1, padding=2)
+
+        self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.relu = nn.ReLU()
+
+        # BERT model
+        self.config = BertConfig(
+            hidden_size=256,
+            num_hidden_layers=4,
+            num_attention_heads=4,
+            intermediate_size=1024
+        )
+        self.bert = BertModel(self.config)
+        self.dropout = nn.Dropout(0.1)
+
+        # Fully connected layer after BERT
+        # BERT base has an output size of 768
+        self.fc = nn.Linear(in_features=self.config.hidden_size, out_features=1)
+
+    def forward(self, x):
+        # CNN
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.conv2(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.conv3(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        
+        x = self.conv4(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        
+        x = self.conv5(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        # Flatten the CNN output to have a sequence length compatible with BERT
+        # Here, we're assuming the sequence length is compatible with the BERT variant being used.
+        # Adjust the reshaping as required.
+        # x = x.permute(0, 2, 1).flatten(1, -2)
+        x = x.permute(0, 2, 1)
+
+        # BERT expects input of shape (batch, seq_len, feature_dim)
+        outputs = self.bert(inputs_embeds=x)
+        x = outputs['last_hidden_state'][:, 0, :]  # CLS token
+        x = self.dropout(x)
+
+        # Fully connected layer
+        x = self.fc(x)
+
+        return x
+
 
 class Cnn1d(nn.Module):
     def __init__(self):
