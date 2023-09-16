@@ -2,27 +2,41 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split, ConcatDataset
+from torch.utils.data import DataLoader, random_split, ConcatDataset, Subset
 from torch.cuda.amp import autocast, GradScaler
 from tqdm.auto import tqdm
 from transformers import get_cosine_schedule_with_warmup
-import random
 import numpy as np
 
 from model import *
 from customdataset import CustomDataset
 
-# Seed 값을 고정
-SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+
+def upsampling(train_indices, dataset):
+    df = dataset.df
+    indices_by_age_group = {}
+
+    # 범위별로 데이터를 그룹화합니다.
+    for idx in train_indices:
+        age = df.iloc[idx]['AGE']
+        age_group = int(age)
+        if age_group not in indices_by_age_group:
+            indices_by_age_group[age_group] = []
+        indices_by_age_group[age_group].append(idx)
+
+    # 가장 큰 그룹의 크기를 찾습니다.
+    max_size = max([len(indices) for indices in indices_by_age_group.values()])
+
+    # 모든 그룹의 크기를 가장 큰 그룹의 크기와 동일하게 맞춰주기 위해 업샘플링합니다.
+    upsampled_indices = []
+    for indices in indices_by_age_group.values():
+        upsampled_indices.extend(np.random.choice(indices, size=max_size, replace=True))
+
+    return upsampled_indices
 
 
 # GPU 사용 설정
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 # Paths
@@ -35,41 +49,44 @@ numpy_folder_child = 'dataset/child/train/'
 dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
 dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
-# dataset = ConcatDataset([dataset_adult, dataset_child])
+dataset = ConcatDataset([dataset_adult, dataset_child])
 
-dataset = dataset_adult
-# dataset = dataset_child
-batch_size = 100
-num_epochs = 200
-accumulation_steps = 1
-checkpoint_path = 'lstmtobert_adult.pth'
+dataset = dataset_child
 
 
 train_len = int(0.9 * len(dataset))
 val_len = len(dataset) - train_len
 
-train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
+train_dataset_original, val_dataset = random_split(dataset, [train_len, val_len])
 
+# 학습 데이터만 업샘플링
+upsampled_train_indices = upsampling(train_dataset_original.indices, dataset)
+train_dataset = Subset(dataset, upsampled_train_indices)
+
+batch_size = 100
+num_epochs = 200
+accumulation_steps = 1
 
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num_workers=4)
 
 
 # model = Model().to(device)
-model = LSTMtoBERT().to(device)
+model = CNNTOLSTM(input_size=32, hidden_size=100, num_layers=1).to(device)
 
 # Loss and Optimizer
 # criterion = nn.HuberLoss()
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
-optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
-# optimizer = optim.AdamW(model.parameters(), lr=0.001)
+# optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
+optimizer = optim.AdamW(model.parameters(), lr=0.001)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
 best_val_loss = float('inf')
 
 # Checkpoint 불러오기 (만약 있다면)
 start_epoch = 0
+checkpoint_path = 'cnntolstm_child2.pth'
 
 # 모델이 이미 있는 경우에만 실행
 if os.path.exists(checkpoint_path):
@@ -133,6 +150,6 @@ for epoch in range(start_epoch, num_epochs):
         }
         torch.save(checkpoint, f'{checkpoint_path}')
 
-        print(f"epoch:{epoch+1}, New best validation loss ({best_val_loss:.4f}), saving model: {checkpoint_path}")
+        print(f"epoch:{epoch}, New best validation loss ({best_val_loss:.4f}), saving model...")
 
     print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss:.4f}, best_val_loss: {best_val_loss}")
