@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -26,7 +27,7 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
 dataset = ConcatDataset([dataset_adult, dataset_child])
 
-# dataset = dataset_adult
+dataset = dataset_adult
 
 
 train_len = int(0.9 * len(dataset))
@@ -48,13 +49,28 @@ accumulation_steps = 1
 
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
+# optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
 best_val_loss = float('inf')
 
+# Checkpoint 불러오기 (만약 있다면)
+start_epoch = 0
+checkpoint_path = 'model_checkpoint.pth'
+
+# 모델이 이미 있는 경우에만 실행
+if os.path.exists(checkpoint_path):
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    scaler.load_state_dict(checkpoint['scaler_state_dict'])
+    scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+    start_epoch = checkpoint['epoch'] + 1
+    best_val_loss = checkpoint['best_val_loss']
+
 # Train the model
-for epoch in range(num_epochs):
+for epoch in range(start_epoch, num_epochs):
     model.train()
     train_loss = 0.0
 
@@ -99,10 +115,12 @@ for epoch in range(num_epochs):
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'scaler_state_dict': scaler.state_dict(),
-            'scheduler_state_dict': scheduler.state_dict()
+            'scheduler_state_dict': scheduler.state_dict(),
+            'epoch': epoch,
+            'best_val_loss': best_val_loss
         }
-        torch.save(checkpoint, 'model_checkpoint.pth')
-        # torch.save(model.state_dict(), 'best_model_checkpoint.pth')
+        torch.save(checkpoint, f'{checkpoint_path}')
+
         print(f"epoch:{epoch}, New best validation loss ({best_val_loss:.4f}), saving model...")
 
     print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss:.4f}, best_val_loss: {best_val_loss}")

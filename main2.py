@@ -40,7 +40,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
 
 # model = Model().to(device)
-model = BERTforECG.to(device)
+model = BERTforECG().to(device)
 
 # Loss and Optimizer
 num_epochs = 200
