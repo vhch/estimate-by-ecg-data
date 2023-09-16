@@ -27,7 +27,8 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
 dataset = ConcatDataset([dataset_adult, dataset_child])
 
-dataset = dataset_adult
+# dataset = dataset_adult
+dataset = dataset_child
 
 
 train_len = int(0.9 * len(dataset))
@@ -58,7 +59,7 @@ best_val_loss = float('inf')
 
 # Checkpoint 불러오기 (만약 있다면)
 start_epoch = 0
-checkpoint_path = 'model_checkpoint.pth'
+checkpoint_path = 'lstm_child.pth'
 
 # 모델이 이미 있는 경우에만 실행
 if os.path.exists(checkpoint_path):
