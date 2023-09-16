@@ -64,3 +64,43 @@ class BERTforECG(nn.Module):
         pooled_output = outputs[1]
         final_output = self.fc(pooled_output)
         return final_output
+
+
+class CNN1D(nn.Module):
+    def __init__(self, in_channels, out_channels=256):
+        super(CNN1D, self).__init__()
+        
+        self.cnn = nn.Sequential(
+            nn.Conv1d(in_channels=in_channels, out_channels=128, kernel_size=5, stride=2, padding=2),
+            nn.ReLU(),
+            nn.Conv1d(in_channels=128, out_channels=out_channels, kernel_size=5, stride=2, padding=2),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool1d(512)  # Avg pooling to make the sequence length 512
+        )
+    
+    def forward(self, x):
+        return self.cnn(x)
+
+class CNNBERT(nn.Module):
+    def __init__(self, in_channels):
+        super().__init__()
+        
+        self.cnn = CNN1D(in_channels)
+
+        self.config = BertConfig(
+            hidden_size=512,
+            num_hidden_layers=6,
+            num_attention_heads=8,
+            intermediate_size=2048
+        )
+        self.bert = BertModel(self.config)
+
+        self.fc = nn.Linear(self.config.hidden_size, 1)
+
+    def forward(self, x):
+        x = self.cnn(x)  # Pass through 1D CNN. Shape should now be (batch_num, 12, 512)
+        
+        outputs = self.bert(input_ids=None, inputs_embeds=x)
+        pooled_output = outputs.pooler_output  # Taking pooled output. Change this depending on your requirement.
+        
+        return self.fc(pooled_output)
