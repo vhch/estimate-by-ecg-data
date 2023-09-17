@@ -260,76 +260,75 @@ class Cnntobert(nn.Module):
 
         return x
 
-
-class Cnntobert2(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.conv1 = nn.Conv1d(in_channels=12, out_channels=16, kernel_size=5, stride=1, padding=2)
-        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
-        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2)
-        self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, stride=1, padding=2)
-        self.conv5 = nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, stride=1, padding=2)
-        self.conv6 = nn.Conv1d(in_channels=256, out_channels=512, kernel_size=5, stride=1, padding=2)
-
-        self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.relu = nn.ReLU()
-
-        # BERT model
-        self.config = BertConfig(
-            hidden_size=512,
-            num_hidden_layers=12,
-            num_attention_heads=8,
-            intermediate_size=2048
-        )
-        self.bert = BertModel(self.config)
-        self.dropout = nn.Dropout(0.1)
-
-        # Fully connected layer after BERT
-        # BERT base has an output size of 768
-        self.fc = nn.Linear(in_features=self.config.hidden_size, out_features=1)
-
-    def forward(self, x):
-        # CNN
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        x = self.conv2(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        x = self.conv3(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        x = self.conv4(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        x = self.conv5(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        x = self.conv6(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        # Flatten the CNN output to have a sequence length compatible with BERT
-        # Here, we're assuming the sequence length is compatible with the BERT variant being used.
-        # Adjust the reshaping as required.
-        # x = x.permute(0, 2, 1).flatten(1, -2)
-        x = x.permute(0, 2, 1)
-
-        # BERT expects input of shape (batch, seq_len, feature_dim)
-        outputs = self.bert(inputs_embeds=x)
-        x = outputs['last_hidden_state'][:, 0, :]  # CLS token
-        x = self.dropout(x)
-
-        # Fully connected layer
-        x = self.fc(x)
-
-        return x
+# class Cnntobert2(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#
+#         self.conv1 = nn.Conv1d(in_channels=12, out_channels=16, kernel_size=5, stride=1, padding=2)
+#         self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
+#         self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2)
+#         self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, stride=1, padding=2)
+#         self.conv5 = nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, stride=1, padding=2)
+#         self.conv6 = nn.Conv1d(in_channels=256, out_channels=512, kernel_size=5, stride=1, padding=2)
+#
+#         self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
+#         self.relu = nn.ReLU()
+#
+#         # BERT model
+#         self.config = BertConfig(
+#             hidden_size=512,
+#             num_hidden_layers=12,
+#             num_attention_heads=8,
+#             intermediate_size=2048
+#         )
+#         self.bert = BertModel(self.config)
+#         self.dropout = nn.Dropout(0.1)
+#
+#         # Fully connected layer after BERT
+#         # BERT base has an output size of 768
+#         self.fc = nn.Linear(in_features=self.config.hidden_size, out_features=1)
+#
+#     def forward(self, x):
+#         # CNN
+#         x = self.conv1(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#
+#         x = self.conv2(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#
+#         x = self.conv3(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#
+#         x = self.conv4(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#
+#         x = self.conv5(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#
+#         x = self.conv6(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#
+#         # Flatten the CNN output to have a sequence length compatible with BERT
+#         # Here, we're assuming the sequence length is compatible with the BERT variant being used.
+#         # Adjust the reshaping as required.
+#         # x = x.permute(0, 2, 1).flatten(1, -2)
+#         x = x.permute(0, 2, 1)
+#
+#         # BERT expects input of shape (batch, seq_len, feature_dim)
+#         outputs = self.bert(inputs_embeds=x)
+#         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
+#         x = self.dropout(x)
+#
+#         # Fully connected layer
+#         x = self.fc(x)
+#
+#         return x
         
 
 
@@ -417,7 +416,8 @@ class LSTMtoBERT(nn.Module):
         out = self.fc(bert_output)
 
         return out
-# -------------------------------------------------------------------------------------
+
+###########################################################################################
 
 class Cnn1d(nn.Module):
     def __init__(self):
@@ -611,94 +611,81 @@ class ECGResNet(nn.Module):
 
         return x
 
+class Cnntobert2(nn.Module):
+    def __init__(self):
+        super().__init__()
 
-class SelfAttention(nn.Module):
-    def __init__(self, embed_size, heads):
-        super(SelfAttention, self).__init__()
-        self.embed_size = embed_size
-        self.heads = heads
-        self.head_dim = embed_size // heads
-
-        assert (
-            self.head_dim * heads == embed_size
-        ), "Embedding size needs to be divisible by heads"
-
-        self.values = nn.Linear(self.head_dim, self.head_dim, bias=False)
-        self.keys = nn.Linear(self.head_dim, self.head_dim, bias=False)
-        self.queries = nn.Linear(self.head_dim, self.head_dim, bias=False)
-        self.fc_out = nn.Linear(heads * self.head_dim, embed_size)
-
-    def forward(self, values, keys, query, mask):
-        N = query.shape[0]
-        value_len, key_len, query_len = values.shape[1], keys.shape[1], query.shape[1]
-
-        # Split the embedding into self.heads different pieces
-        values = values.reshape(N, value_len, self.heads, self.head_dim)
-        keys = keys.reshape(N, key_len, self.heads, self.head_dim)
-        queries = query.reshape(N, query_len, self.heads, self.head_dim)
-
-        values = self.values(values)
-        keys = self.keys(keys)
-        queries = self.queries(queries)
-
-        # Scaled dot-product attention
-        attention = torch.einsum("nqhd,nkhd->nhqk", [queries, keys]) / (self.embed_size ** (1/2))
-        if mask is not None:
-            attention = attention.masked_fill(mask == 0, float("-1e20"))
-
-        attention = torch.nn.functional.softmax(attention, dim=3)
-
-        out = torch.einsum("nhql,nlhd->nqhd", [attention, values]).reshape(
-            N, query_len, self.heads*self.head_dim
-        )
-
-        out = self.fc_out(out)
-        return out
-
-class TransformerBlock(nn.Module):
-    def __init__(self, embed_size, heads, dropout, forward_expansion):
-        super(TransformerBlock, self).__init__()
-        self.attention = SelfAttention(embed_size, heads)
-        self.norm1 = nn.LayerNorm(embed_size)
-        self.norm2 = nn.LayerNorm(embed_size)
-
-        self.feed_forward = nn.Sequential(
-            nn.Linear(embed_size, forward_expansion*embed_size),
+        # self.conv1 = nn.Conv1d(in_channels=12, out_channels=16, kernel_size=5, stride=1, padding=2)
+        # self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
+        # self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2)
+        # self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, stride=1, padding=2)
+        # self.conv5 = nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, stride=1, padding=2)
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(64),
             nn.ReLU(),
-            nn.Linear(forward_expansion*embed_size, embed_size)
+            nn.MaxPool1d(kernel_size=2)
+        )
+        self.layer2 = nn.Sequential(
+            nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+        
+        self.layer3 = nn.Sequential(
+            nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+        
+        self.layer4 = nn.Sequential(
+            nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
         )
 
-        self.dropout = nn.Dropout(dropout)
+        self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.relu = nn.ReLU()
 
-    def forward(self, value, key, query, mask):
-        attention = self.attention(value, key, query, mask)
-
-        # Add skip connection, run through normalization and finally dropout
-        x = self.norm1(attention + query)
-        x = self.dropout(x)
-        forward = self.feed_forward(x)
-        out = self.norm2(forward + x)
-        return out
-
-class AgePredictor(nn.Module):
-    def __init__(self, embed_size, num_layers, heads, forward_expansion, dropout, max_length):
-        super(AgePredictor, self).__init__()
-
-        self.embed_size = embed_size
-        self.model = TransformerBlock(embed_size, heads, dropout, forward_expansion)
-        self.pool = nn.AdaptiveAvgPool1d(1)
-        self.fc_out = nn.Linear(embed_size, 1)
-
-    def forward(self, x, mask=None):
-        N, T = x.shape[0], x.shape[2]
-        positions = (
-            torch.arange(0, T)
-            .expand(N, T)
-            .to(x.device)
+        # BERT model
+        self.config = BertConfig(
+            hidden_size=256,
+            num_hidden_layers=4,
+            num_attention_heads=4,
+            intermediate_size=1024,
+            max_position_embeddings=1024
         )
+        self.bert = BertModel(self.config)
+        self.dropout = nn.Dropout(0.1)
 
-        out = self.model(x, x, x, mask)
-        out = out.permute(0, 2, 1)
-        out = self.pool(out)
-        out = out.squeeze(2)
-        return self.fc_out(out)
+        # Fully connected layers
+        self.fc1 = nn.Linear(256 + 1, 64)
+        self.fc2 = nn.Linear(64, 1)
+
+    def forward(self, x, gender):
+        # CNN
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        # x = self.layer4(x)
+
+        # Flatten the CNN output to have a sequence length compatible with BERT
+        # Here, we're assuming the sequence length is compatible with the BERT variant being used.
+        # Adjust the reshaping as required.
+        # x = x.permute(0, 2, 1).flatten(1, -2)
+        x = x.permute(0, 2, 1)
+
+        # Concatenate with gender
+
+        # BERT expects input of shape (batch, seq_len, feature_dim)
+        outputs = self.bert(inputs_embeds=x)
+        x = outputs['last_hidden_state'][:, 0, :]  # CLS token
+        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+
+        return x

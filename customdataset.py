@@ -21,11 +21,11 @@ from scipy.signal import butter, filtfilt
 #         data = data.reshape(12, 5000)
 #         age = self.df.iloc[idx]['AGE']
 #         if self.df.iloc[idx]['GENDER'] == 'MALE':
-#             gender = 1
-#         elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
-#             gender = 2
-#         else:
 #             gender = 0
+#         elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
+#             gender = 1
+#         else:
+#             gender = 2
 #
 #         return torch.tensor(data.copy(), dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age, dtype=torch.float32)
 #
@@ -45,11 +45,11 @@ from scipy.signal import butter, filtfilt
 #         data = filtfilt(self.b, self.a, data)
 #         data = data.reshape(12, 5000)
 #         if self.df.iloc[idx]['GENDER'] == 'MALE':
-#             gender = 1
-#         elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
-#             gender = 2
-#         else:
 #             gender = 0
+#         elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
+#             gender = 1
+#         else:
+#             gender = 2
 #
 #         return torch.tensor(data.copy(), dtype=torch.float32), torch.tensor(gender, dtype=torch.float32)
 
@@ -69,11 +69,11 @@ class CustomDataset_adult(Dataset):
         data = data.reshape(12, 5000)
         age = self.df.iloc[idx]['AGE'] - 19
         if self.df.iloc[idx]['GENDER'] == 'MALE':
-            gender = 1
-        elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
-            gender = 2
-        else:
             gender = 0
+        elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
+            gender = 1
+        else:
+            gender = 2
 
         return torch.tensor(data, dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age, dtype=torch.long)
 
@@ -95,11 +95,11 @@ class CustomDataset(Dataset):
         data = data.reshape(12, 5000)
         age = self.df.iloc[idx]['AGE']
         if self.df.iloc[idx]['GENDER'] == 'MALE':
-            gender = 1
-        elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
-            gender = 2
-        else:
             gender = 0
+        elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
+            gender = 1
+        else:
+            gender = 2
 
         return torch.tensor(data, dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age, dtype=torch.float32)
 
@@ -123,11 +123,11 @@ class InferenceDataset(Dataset):
         data = data.reshape(12, 5000)
 
         if self.df.iloc[idx]['GENDER'] == 'MALE':
-            gender = 1
-        elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
-            gender = 2
-        else:
             gender = 0
+        elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
+            gender = 1
+        else:
+            gender = 2
 
         return torch.tensor(data, dtype=torch.float32), torch.tensor(gender, dtype=torch.float32)
 
