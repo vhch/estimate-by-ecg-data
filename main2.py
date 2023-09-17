@@ -8,10 +8,9 @@ from tqdm.auto import tqdm
 from transformers import get_cosine_schedule_with_warmup
 import random
 import numpy as np
-import torch.nn.functional as F
 
 from model import *
-from customdataset import CustomDataset, CustomDataset_adult
+from customdataset import CustomDataset
 
 # Seed 값을 고정
 SEED = 42
@@ -40,7 +39,7 @@ numpy_folder_adult = 'dataset/adult/train/'
 csv_path_child = 'dataset/ECG_child_age_train.csv'
 numpy_folder_child = 'dataset/child/train/'
 
-dataset_adult = CustomDataset_adult(csv_path_adult, numpy_folder_adult)
+dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
 dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
 # dataset = ConcatDataset([dataset_adult, dataset_child])
@@ -48,9 +47,9 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 dataset = dataset_adult
 # dataset = dataset_child
 batch_size = 100
-num_epochs = 400
+num_epochs = 200
 accumulation_steps = 1
-checkpoint_path = 'checkpoint/Cnntobert_adult_classi.pth'
+checkpoint_path = 'checkpoint/Cnntobert_adult3.pth'
 
 
 train_len = int(0.9 * len(dataset))
@@ -64,14 +63,14 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 
 # model = Model().to(device)
-model = Cnntobert_adult().to(device)
+model = Cnntobert().to(device)
 
 # Loss and Optimizer
 # criterion = nn.HuberLoss()
-# criterion = nn.MSELoss()  # Mean Squared Error for regression
-criterion = nn.CrossEntropyLoss()  # Mean Squared Error for regression
+criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
-optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
+# optimizer = optim.AdamW(model.parameters(), lr=4e-4)
+optimizer = optim.AdamW(model.parameters(), lr=4e-5, weight_decay=1e-5, betas=(0.9, 0.999))
 # optimizer = optim.AdamW(model.parameters(), lr=0.001)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
@@ -103,7 +102,7 @@ for epoch in range(start_epoch, num_epochs):
             # print(data.shape)
             # print(gender.shape)
             # print(output.shape)
-            loss = criterion(output.reshape(-1, 104), targets.reshape(-1))
+            loss = criterion(output.reshape(-1), targets.reshape(-1))
 
         train_loss += loss.item()
         scaler.scale(loss).backward()
@@ -125,8 +124,6 @@ for epoch in range(start_epoch, num_epochs):
         for batch_idx, (data, gender, targets) in enumerate(val_loader):
             data, gender, targets = data.to(device), gender.to(device), targets.to(device)
             outputs = model(data)
-            outputs = F.softmax(outputs, dim=1)
-            _, outputs = torch.max(outputs, dim=1)
             val_loss += criterion_val(outputs.reshape(-1), targets.reshape(-1)).item()
     # print(outputs[:5], targets[:5])
     val_loss /= len(val_loader)

@@ -21,8 +21,16 @@ torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
+# 경로 설정
+checkpoint_dir = "checkpoint"
 
-def upsampling(train_indices, dataset, min_threshold=100):
+# 경로에 디렉토리가 없으면 생성
+if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+
+
+
+def upsampling(train_indices, dataset):
     df = dataset.df
     indices_by_age_group = {}
 
@@ -40,13 +48,14 @@ def upsampling(train_indices, dataset, min_threshold=100):
     # 가장 큰 그룹의 크기를 찾습니다.
     max_size = max([len(indices) for indices in indices_by_age_group.values()])
     avg_size = int(np.mean([len(indices) for indices in indices_by_age_group.values()]))
+    min_threshold = avg_size
 
     # 모든 그룹의 크기를 가장 큰 그룹의 크기와 동일하게 맞춰주기 위해 업샘플링합니다.
     upsampled_indices = []
     for indices in indices_by_age_group.values():
         # upsampled_indices.extend(np.random.choice(indices, size=avg_size, replace=True))
         # 해당 그룹의 크기가 min_threshold 이하일 경우, 업샘플링을 건너뛴다.
-        if len(indices) <= min_threshold:
+        if len(indices) >= min_threshold:
             upsampled_indices.extend(indices)
         else:
             upsampled_indices.extend(np.random.choice(indices, size=max_size, replace=True))
@@ -70,9 +79,9 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
 dataset = ConcatDataset([dataset_adult, dataset_child])
 
-# dataset = dataset_adult
-dataset = dataset_child
-checkpoint_path = 'cnntolstm_child2_up_thresold.pth'
+dataset = dataset_adult
+# dataset = dataset_child
+checkpoint_path = 'cnntobert_adult_up_thresold.pth'
 
 
 train_len = int(0.9 * len(dataset))
@@ -96,14 +105,14 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 # model = Model().to(device)
 # model = CNNTOLSTM(input_size=32, hidden_size=100, num_layers=1).to(device)
-model = CNNTOLSTM(input_size=32, hidden_size=256, num_layers=2, dropout=0.1).to(device)
+model = Cnntobert().to(device)
 
 # Loss and Optimizer
 # criterion = nn.HuberLoss()
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
-# optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
-optimizer = optim.AdamW(model.parameters(), lr=0.001)
+optimizer = optim.AdamW(model.parameters(), lr=4e-5, weight_decay=1e-5, betas=(0.9, 0.999))
+# optimizer = optim.AdamW(model.parameters(), lr=0.001)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
 best_val_loss = float('inf')

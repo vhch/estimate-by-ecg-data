@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from transformers import BertModel, BertTokenizer, BertConfig
 
 
@@ -66,30 +67,22 @@ class BERTforECG(nn.Module):
         super().__init__()
 
         self.config = BertConfig(
-            hidden_size=240,
-            num_hidden_layers=4,
-            num_attention_heads=4,
-            intermediate_size=960
+            hidden_size=500,
+            num_hidden_layers=6,
+            num_attention_heads=10,
+            intermediate_size=2048
         )
         self.bert = BertModel(self.config)
-
-        self.linear = nn.Sequential(
-            nn.Linear(5000, 2000),
-            nn.ReLU(),
-        )
 
         self.fc = nn.Linear(self.config.hidden_size, 1)
 
     def forward(self, x):
         # BERT expects inputs in the shape (batch_size, seq_length, hidden_size)
         # Since we're not using any token type ids or attention masks, we can pass None for them
-        x = self.linear(x)
-        x = x.reshape(-1, 240, 100)
-        x = x.permute(0, 2, 1)
         outputs = self.bert(inputs_embeds=x, token_type_ids=None, attention_mask=None)
 
         # Only using the [CLS] token's output, denoting the aggregated representation
-        pooled_output = outputs[0][:, -1, :]
+        pooled_output = outputs[1]
         final_output = self.fc(pooled_output)
         return final_output
 
@@ -153,7 +146,7 @@ class Cnntobert_adult(nn.Module):
         # BERT model
         self.config = BertConfig(
             hidden_size=256,
-            num_hidden_layers=4,
+            num_hidden_layers=8,
             num_attention_heads=4,
             intermediate_size=1024
         )
@@ -195,7 +188,7 @@ class Cnntobert_adult(nn.Module):
         # BERT expects input of shape (batch, seq_len, feature_dim)
         outputs = self.bert(inputs_embeds=x)
         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
-        x = self.dropout(x)
+        # x = self.dropout(x)
 
         # Fully connected layer
         x = self.fc(x)
@@ -285,7 +278,7 @@ class Cnntobert2(nn.Module):
         # BERT model
         self.config = BertConfig(
             hidden_size=512,
-            num_hidden_layers=6,
+            num_hidden_layers=12,
             num_attention_heads=8,
             intermediate_size=2048
         )
@@ -339,34 +332,55 @@ class Cnntobert2(nn.Module):
         return x
         
 
-
 class Cnn1d(nn.Module):
     def __init__(self):
         super().__init__()
-
-        self.cnn = nn.Sequential(
-            nn.Conv1d(in_channels=12, out_channels=32, kernel_size=5, stride=1, padding=2),
+        
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(64),
             nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2),
-            
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2),
-            
-            # 추가적인 층을 더 쌓을 수 있습니다
+            nn.MaxPool1d(kernel_size=2)
         )
-
-        self.fc = nn.Sequential(
-            nn.Linear(64 * (5000 // 4), 128),  # 2번의 MaxPool1d에 의해 길이가 1/4로 줄었다고 가정
+        
+        self.layer2 = nn.Sequential(
+            nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Linear(128, 1)  # Age 예측을 위한 출력. 회귀 문제로 간주.
+            nn.MaxPool1d(kernel_size=2)
         )
-    
+        
+        self.layer3 = nn.Sequential(
+            nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+        
+        self.layer4 = nn.Sequential(
+            nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+        
+        self.fc1 = nn.Linear(512 * 312, 1024)  # Assuming that after 4 maxpooling layers the sequence length is 312. Adjust if necessary.
+        self.fc2 = nn.Linear(1024, 256)
+        self.fc3 = nn.Linear(256, 1)
+
     def forward(self, x):
-        x = self.cnn(x)
-        x = x.view(x.size(0), -1)  # Flatten
-        x = self.fc(x)
-        return x
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        
+        out = out.view(out.size(0), -1)
+        
+        out = F.relu(self.fc1(out))
+        out = F.relu(self.fc2(out))
+        out = self.fc3(out)
+        
+        return out
 
 
 class CNNTOLSTM(nn.Module):

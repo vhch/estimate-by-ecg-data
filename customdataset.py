@@ -84,6 +84,8 @@ class CustomDataset(Dataset):
         self.df = pd.read_csv(csv_path)
         self.numpy_folder = numpy_folder
 
+        self.df = self.df[self.df['AGE'] <= 90]
+
     def __len__(self):
         return len(self.df)
 
