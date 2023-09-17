@@ -29,12 +29,18 @@ def downsampling(train_indices, dataset):
 
     # 가장 작은 그룹의 크기를 찾습니다.
     min_size = min([len(indices) for indices in indices_by_age_group.values()])
+    avg_size = int(np.mean([len(indices) for indices in indices_by_age_group.values()]))
+    min_threshold = avg_size
 
     # 모든 그룹의 크기를 가장 작은 그룹의 크기와 동일하게 맞춰주기 위해 다운샘플링합니다.
     downsampled_indices = []
     for indices in indices_by_age_group.values():
-        downsampled_indices.extend(np.random.choice(indices, size=min_size, replace=False))
-
+        # downsampled_indices.extend(np.random.choice(indices, size=min_size, replace=False))
+        # downsampled_indices.extend(np.random.choice(indices, size=min_size, replace=True))
+        if len(indices) <= min_threshold:
+            downsampled_indices.extend(indices)
+        else:
+            downsampled_indices.extend(np.random.choice(indices, size=min_size, replace=False))
     return downsampled_indices
 
 
@@ -54,7 +60,7 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
 dataset = ConcatDataset([dataset_adult, dataset_child])
 
-dataset = dataset_child
+dataset = dataset_adult
 
 
 train_len = int(0.9 * len(dataset))
@@ -65,6 +71,7 @@ train_dataset_original, val_dataset = random_split(dataset, [train_len, val_len]
 # 학습 데이터만 업샘플링
 downsampled_train_indices = downsampling(train_dataset_original.indices, dataset)
 train_dataset = Subset(dataset, downsampled_train_indices)
+
 print(len(train_dataset))
 
 batch_size = 100
@@ -76,7 +83,9 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 
 # model = Model().to(device)
-model = CNNTOLSTM(input_size=32, hidden_size=100, num_layers=1).to(device)
+# model = CNNTOLSTM(input_size=32, hidden_size=100, num_layers=1).to(device)
+model = CNNTOLSTM(input_size=32, hidden_size=256, num_layers=2, dropout=0.1).to(device)
+
 
 # Loss and Optimizer
 # criterion = nn.HuberLoss()
@@ -90,7 +99,7 @@ best_val_loss = float('inf')
 
 # Checkpoint 불러오기 (만약 있다면)
 start_epoch = 0
-checkpoint_path = 'cnntolstm_child2.pth'
+checkpoint_path = 'checkpoint/cnntolstm_adult_down.pth'
 
 # 모델이 이미 있는 경우에만 실행
 if os.path.exists(checkpoint_path):
