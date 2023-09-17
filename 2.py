@@ -49,7 +49,7 @@ dataset = dataset_adult
 batch_size = 128
 num_epochs = 200
 accumulation_steps = 1
-checkpoint_path = 'checkpoint/1_adult.pth'
+checkpoint_path = 'checkpoint/2_adult.pth'
 
 
 train_len = int(0.9 * len(dataset))
@@ -63,7 +63,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 
 # model = Model().to(device)
-model = Cnntobert2().to(device)
+model = Cnn1d().to(device)
 
 # Loss and Optimizer
 # criterion = nn.HuberLoss()

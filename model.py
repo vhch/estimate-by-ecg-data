@@ -450,17 +450,20 @@ class Cnn1d(nn.Module):
             nn.MaxPool1d(kernel_size=2)
         )
         
-        self.fc1 = nn.Linear(512 * 312, 1024)  # Assuming that after 4 maxpooling layers the sequence length is 312. Adjust if necessary.
+        self.fc1 = nn.Linear(512 * 312 + 1, 1024)  # Assuming that after 4 maxpooling layers the sequence length is 312. Adjust if necessary.
         self.fc2 = nn.Linear(1024, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, x):
+    def forward(self, x, gender):
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
         
         out = out.view(out.size(0), -1)
+
+        out = torch.cat([out, gender.unsqueeze(1)], dim=1)
+
         
         out = F.relu(self.fc1(out))
         out = F.relu(self.fc2(out))
@@ -488,7 +491,7 @@ class CNNGRUAgePredictor(nn.Module):
         self.fc1 = nn.Linear(64, 32)
         self.fc2 = nn.Linear(32, 1)
 
-    def forward(self, x):
+    def forward(self, x, gender):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.max_pool1d(x, 2)
         x = F.relu(self.bn2(self.conv2(x)))
@@ -504,6 +507,8 @@ class CNNGRUAgePredictor(nn.Module):
 
         # Only take the output from the final timetep
         x = h_n[-1]
+
+        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
