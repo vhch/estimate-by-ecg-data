@@ -332,55 +332,6 @@ class Cnntobert2(nn.Module):
         return x
         
 
-class Cnn1d(nn.Module):
-    def __init__(self):
-        super().__init__()
-        
-        self.layer1 = nn.Sequential(
-            nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7),
-            nn.BatchNorm1d(64),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2)
-        )
-        
-        self.layer2 = nn.Sequential(
-            nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2)
-        )
-        
-        self.layer3 = nn.Sequential(
-            nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2)
-        )
-        
-        self.layer4 = nn.Sequential(
-            nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.MaxPool1d(kernel_size=2)
-        )
-        
-        self.fc1 = nn.Linear(512 * 312, 1024)  # Assuming that after 4 maxpooling layers the sequence length is 312. Adjust if necessary.
-        self.fc2 = nn.Linear(1024, 256)
-        self.fc3 = nn.Linear(256, 1)
-
-    def forward(self, x):
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-        
-        out = out.view(out.size(0), -1)
-        
-        out = F.relu(self.fc1(out))
-        out = F.relu(self.fc2(out))
-        out = self.fc3(out)
-        
-        return out
 
 
 class CNNTOLSTM(nn.Module):
@@ -466,3 +417,289 @@ class LSTMtoBERT(nn.Module):
         out = self.fc(bert_output)
 
         return out
+
+---------------------------------------------------------------------------------------------
+
+class Cnn1d(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+        
+        self.layer2 = nn.Sequential(
+            nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+        
+        self.layer3 = nn.Sequential(
+            nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+        
+        self.layer4 = nn.Sequential(
+            nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+        
+        self.fc1 = nn.Linear(512 * 312, 1024)  # Assuming that after 4 maxpooling layers the sequence length is 312. Adjust if necessary.
+        self.fc2 = nn.Linear(1024, 256)
+        self.fc3 = nn.Linear(256, 1)
+
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        
+        out = out.view(out.size(0), -1)
+        
+        out = F.relu(self.fc1(out))
+        out = F.relu(self.fc2(out))
+        out = self.fc3(out)
+        
+        return out
+
+
+class CNNGRUAgePredictor(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        # 1D CNN layers
+        self.conv1 = nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7)
+        self.bn1 = nn.BatchNorm1d(64)
+        self.conv2 = nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.conv3 = nn.Conv1d(128, 128, kernel_size=15, stride=1, padding=7)
+        self.bn3 = nn.BatchNorm1d(128)
+
+        # LSTM layer
+        self.gru = nn.GRU(input_size=128, hidden_size=64, num_layers=2, batch_first=True, dropout=0.5)
+
+        # Fully connected layers
+        self.fc1 = nn.Linear(64, 32)
+        self.fc2 = nn.Linear(32, 1)
+
+    def forward(self, x):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.max_pool1d(x, 2)
+
+        # (batch_size, sequence_length, num_features)
+        x = x.permute(0, 2, 1)
+        
+        # RNN layers expect the input in the form (batch_size, sequence_length, num_features)
+        _, h_n = self.gru(x)
+
+        # Only take the output from the final timetep
+        x = h_n[-1]
+
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+
+        return x
+
+
+class EnhancedECGNet(nn.Module):
+    def __init__(self):
+        super(EnhancedECGNet, self).__init__()
+
+        # 1D CNN layers
+        self.conv1 = nn.Conv1d(12, 32, kernel_size=7, stride=1, padding=3)
+        self.bn1 = nn.BatchNorm1d(32)
+        self.conv2 = nn.Conv1d(32, 64, kernel_size=7, stride=1, padding=3)
+        self.bn2 = nn.BatchNorm1d(64)
+        self.conv3 = nn.Conv1d(64, 128, kernel_size=7, stride=1, padding=3)
+        self.bn3 = nn.BatchNorm1d(128)
+        self.conv4 = nn.Conv1d(128, 256, kernel_size=7, stride=1, padding=3)
+        self.bn4 = nn.BatchNorm1d(256)
+
+        # Gender will be concatenated, so +1
+        self.fc1 = nn.Linear(256*625 + 1, 128)  # 5000 / 2 / 2 / 2 / 2 = 625
+        self.dropout1 = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(128, 64)
+        self.dropout2 = nn.Dropout(0.5)
+        self.fc3 = nn.Linear(64, 1)
+
+    def forward(self, x, gender):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = F.max_pool1d(x, 2)
+
+        # Flatten the feature maps.
+        x = x.view(x.size(0), -1)
+
+        # Concatenate with gender
+        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+
+        x = F.relu(self.fc1(x))
+        x = self.dropout1(x)
+        x = F.relu(self.fc2(x))
+        x = self.dropout2(x)
+        x = self.fc3(x)
+
+        return x
+
+
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=7, stride=1, padding=3):
+        super(ResidualBlock, self).__init__()
+
+        self.conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.bn1 = nn.BatchNorm1d(out_channels)
+        self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.bn2 = nn.BatchNorm1d(out_channels)
+        
+        self.residual_transform = nn.Sequential(
+            nn.Conv1d(in_channels, out_channels, kernel_size=1),
+            nn.BatchNorm1d(out_channels)
+        )
+
+    def forward(self, x):
+        residual = x
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        if self.conv1.in_channels != self.conv2.out_channels:
+            residual = self.residual_transform(residual)
+        out += residual
+        out = F.relu(out)
+        return out
+
+class ECGResNet(nn.Module):
+    def __init__(self):
+        super(ECGResNet, self).__init__()
+
+        self.conv_initial = nn.Conv1d(12, 64, kernel_size=7, stride=1, padding=3)
+        
+        self.block1 = ResidualBlock(64, 128)
+        self.block2 = ResidualBlock(128, 256)
+        self.block3 = ResidualBlock(256, 512)
+        
+        self.global_avg_pool = nn.AdaptiveAvgPool1d(1)
+        self.fc1 = nn.Linear(513, 256) # 512 + 1 (for gender)
+        self.fc2 = nn.Linear(256, 1)
+
+    def forward(self, x, gender):
+        x = self.conv_initial(x)
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.global_avg_pool(x)
+        x = x.view(x.size(0), -1)
+        
+        # Concatenate with gender
+        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+        
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+
+        return x
+
+
+class SelfAttention(nn.Module):
+    def __init__(self, embed_size, heads):
+        super(SelfAttention, self).__init__()
+        self.embed_size = embed_size
+        self.heads = heads
+        self.head_dim = embed_size // heads
+
+        assert (
+            self.head_dim * heads == embed_size
+        ), "Embedding size needs to be divisible by heads"
+
+        self.values = nn.Linear(self.head_dim, self.head_dim, bias=False)
+        self.keys = nn.Linear(self.head_dim, self.head_dim, bias=False)
+        self.queries = nn.Linear(self.head_dim, self.head_dim, bias=False)
+        self.fc_out = nn.Linear(heads * self.head_dim, embed_size)
+
+    def forward(self, values, keys, query, mask):
+        N = query.shape[0]
+        value_len, key_len, query_len = values.shape[1], keys.shape[1], query.shape[1]
+
+        # Split the embedding into self.heads different pieces
+        values = values.reshape(N, value_len, self.heads, self.head_dim)
+        keys = keys.reshape(N, key_len, self.heads, self.head_dim)
+        queries = query.reshape(N, query_len, self.heads, self.head_dim)
+
+        values = self.values(values)
+        keys = self.keys(keys)
+        queries = self.queries(queries)
+
+        # Scaled dot-product attention
+        attention = torch.einsum("nqhd,nkhd->nhqk", [queries, keys]) / (self.embed_size ** (1/2))
+        if mask is not None:
+            attention = attention.masked_fill(mask == 0, float("-1e20"))
+
+        attention = torch.nn.functional.softmax(attention, dim=3)
+
+        out = torch.einsum("nhql,nlhd->nqhd", [attention, values]).reshape(
+            N, query_len, self.heads*self.head_dim
+        )
+
+        out = self.fc_out(out)
+        return out
+
+class TransformerBlock(nn.Module):
+    def __init__(self, embed_size, heads, dropout, forward_expansion):
+        super(TransformerBlock, self).__init__()
+        self.attention = SelfAttention(embed_size, heads)
+        self.norm1 = nn.LayerNorm(embed_size)
+        self.norm2 = nn.LayerNorm(embed_size)
+
+        self.feed_forward = nn.Sequential(
+            nn.Linear(embed_size, forward_expansion*embed_size),
+            nn.ReLU(),
+            nn.Linear(forward_expansion*embed_size, embed_size)
+        )
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, value, key, query, mask):
+        attention = self.attention(value, key, query, mask)
+
+        # Add skip connection, run through normalization and finally dropout
+        x = self.norm1(attention + query)
+        x = self.dropout(x)
+        forward = self.feed_forward(x)
+        out = self.norm2(forward + x)
+        return out
+
+class AgePredictor(nn.Module):
+    def __init__(self, embed_size, num_layers, heads, forward_expansion, dropout, max_length):
+        super(AgePredictor, self).__init__()
+
+        self.embed_size = embed_size
+        self.model = TransformerBlock(embed_size, heads, dropout, forward_expansion)
+        self.pool = nn.AdaptiveAvgPool1d(1)
+        self.fc_out = nn.Linear(embed_size, 1)
+
+    def forward(self, x, mask=None):
+        N, T = x.shape[0], x.shape[2]
+        positions = (
+            torch.arange(0, T)
+            .expand(N, T)
+            .to(x.device)
+        )
+
+        out = self.model(x, x, x, mask)
+        out = out.permute(0, 2, 1)
+        out = self.pool(out)
+        out = out.squeeze(2)
+        return self.fc_out(out)
