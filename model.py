@@ -187,7 +187,7 @@ class Cnntobert(nn.Module):
         # BERT expects input of shape (batch, seq_len, feature_dim)
         outputs = self.bert(inputs_embeds=x)
         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
-        x = self.dropout(x)
+        # x = self.dropout(x)
 
         # Fully connected layer
         x = self.fc(x)
@@ -203,16 +203,18 @@ class Cnntobert2(nn.Module):
         self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
         self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2)
         self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, stride=1, padding=2)
+        self.conv5 = nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, stride=1, padding=2)
+        self.conv6 = nn.Conv1d(in_channels=256, out_channels=512, kernel_size=5, stride=1, padding=2)
 
         self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
         self.relu = nn.ReLU()
 
         # BERT model
         self.config = BertConfig(
-            hidden_size=128,
-            num_hidden_layers=2,
-            num_attention_heads=2,
-            intermediate_size=512
+            hidden_size=512,
+            num_hidden_layers=6,
+            num_attention_heads=8,
+            intermediate_size=2048
         )
         self.bert = BertModel(self.config)
         self.dropout = nn.Dropout(0.1)
@@ -234,8 +236,16 @@ class Cnntobert2(nn.Module):
         x = self.conv3(x)
         x = self.relu(x)
         x = self.pool(x)
-        
+
         x = self.conv4(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.conv5(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.conv6(x)
         x = self.relu(x)
         x = self.pool(x)
 
@@ -254,6 +264,7 @@ class Cnntobert2(nn.Module):
         x = self.fc(x)
 
         return x
+        
 
 
 class Cnn1d(nn.Module):

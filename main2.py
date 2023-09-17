@@ -47,9 +47,9 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 dataset = dataset_adult
 # dataset = dataset_child
 batch_size = 200
-num_epochs = 200
+num_epochs = 400
 accumulation_steps = 1
-checkpoint_path = 'checkpoint/Cnntobert_adult.pth'
+checkpoint_path = 'checkpoint/Cnntobert_adult3.pth'
 
 
 train_len = int(0.9 * len(dataset))
