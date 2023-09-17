@@ -8,6 +8,7 @@ from tqdm.auto import tqdm
 from transformers import get_cosine_schedule_with_warmup
 import random
 import numpy as np
+import torch.nn.functional as F
 
 from model import *
 from customdataset import CustomDataset, CustomDataset_adult
@@ -124,6 +125,8 @@ for epoch in range(start_epoch, num_epochs):
         for batch_idx, (data, gender, targets) in enumerate(val_loader):
             data, gender, targets = data.to(device), gender.to(device), targets.to(device)
             outputs = model(data)
+            outputs = F.softmax(outputs, dim=1)
+            _, outputs = torch.max(outputs, dim=1)
             val_loss += criterion_val(outputs.reshape(-1), targets.reshape(-1)).item()
     # print(outputs[:5], targets[:5])
     val_loss /= len(val_loader)

@@ -218,7 +218,7 @@ class Cnntobert(nn.Module):
         # BERT model
         self.config = BertConfig(
             hidden_size=256,
-            num_hidden_layers=6,
+            num_hidden_layers=8,
             num_attention_heads=4,
             intermediate_size=1024
         )
