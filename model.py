@@ -66,22 +66,30 @@ class BERTforECG(nn.Module):
         super().__init__()
 
         self.config = BertConfig(
-            hidden_size=500,
-            num_hidden_layers=6,
-            num_attention_heads=10,
-            intermediate_size=2048
+            hidden_size=240,
+            num_hidden_layers=4,
+            num_attention_heads=4,
+            intermediate_size=960
         )
         self.bert = BertModel(self.config)
+
+        self.linear = nn.Sequential(
+            nn.Linear(5000, 2000),
+            nn.ReLU(),
+        )
 
         self.fc = nn.Linear(self.config.hidden_size, 1)
 
     def forward(self, x):
         # BERT expects inputs in the shape (batch_size, seq_length, hidden_size)
         # Since we're not using any token type ids or attention masks, we can pass None for them
+        x = self.linear(x)
+        x = x.reshape(-1, 240, 100)
+        x = x.permute(0, 2, 1)
         outputs = self.bert(inputs_embeds=x, token_type_ids=None, attention_mask=None)
 
         # Only using the [CLS] token's output, denoting the aggregated representation
-        pooled_output = outputs[1]
+        pooled_output = outputs[0][:, -1, :]
         final_output = self.fc(pooled_output)
         return final_output
 
@@ -129,7 +137,7 @@ class CNNtoB(nn.Module):
 #######################################################################################################################################
 
 
-class Cnntobert(nn.Module):
+class Cnntobert_adult(nn.Module):
     def __init__(self):
         super().__init__()
 
@@ -146,6 +154,71 @@ class Cnntobert(nn.Module):
         self.config = BertConfig(
             hidden_size=256,
             num_hidden_layers=4,
+            num_attention_heads=4,
+            intermediate_size=1024
+        )
+        self.bert = BertModel(self.config)
+        self.dropout = nn.Dropout(0.1)
+
+        # Fully connected layer after BERT
+        # BERT base has an output size of 768
+        self.fc = nn.Linear(in_features=self.config.hidden_size, out_features=104)
+
+    def forward(self, x):
+        # CNN
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.conv2(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        x = self.conv3(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        
+        x = self.conv4(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        
+        x = self.conv5(x)
+        x = self.relu(x)
+        x = self.pool(x)
+
+        # Flatten the CNN output to have a sequence length compatible with BERT
+        # Here, we're assuming the sequence length is compatible with the BERT variant being used.
+        # Adjust the reshaping as required.
+        # x = x.permute(0, 2, 1).flatten(1, -2)
+        x = x.permute(0, 2, 1)
+
+        # BERT expects input of shape (batch, seq_len, feature_dim)
+        outputs = self.bert(inputs_embeds=x)
+        x = outputs['last_hidden_state'][:, 0, :]  # CLS token
+        x = self.dropout(x)
+
+        # Fully connected layer
+        x = self.fc(x)
+
+        return x
+
+class Cnntobert(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.conv1 = nn.Conv1d(in_channels=12, out_channels=16, kernel_size=5, stride=1, padding=2)
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
+        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2)
+        self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, stride=1, padding=2)
+        self.conv5 = nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, stride=1, padding=2)
+
+        self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
+        self.relu = nn.ReLU()
+
+        # BERT model
+        self.config = BertConfig(
+            hidden_size=256,
+            num_hidden_layers=6,
             num_attention_heads=4,
             intermediate_size=1024
         )
@@ -187,7 +260,7 @@ class Cnntobert(nn.Module):
         # BERT expects input of shape (batch, seq_len, feature_dim)
         outputs = self.bert(inputs_embeds=x)
         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
-        # x = self.dropout(x)
+        x = self.dropout(x)
 
         # Fully connected layer
         x = self.fc(x)

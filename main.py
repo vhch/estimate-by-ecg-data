@@ -29,7 +29,7 @@ if not os.path.exists(checkpoint_dir):
 
 
 # GPU 사용 설정
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 # Paths
@@ -49,7 +49,7 @@ dataset = dataset_child
 batch_size = 100
 num_epochs = 400
 accumulation_steps = 1
-checkpoint_path = 'checkpoint/Cnntobert_child13.pth'
+checkpoint_path = 'checkpoint/Cnntobert_child2.pth'
 
 
 train_len = int(0.9 * len(dataset))
@@ -69,8 +69,7 @@ model = Cnntobert().to(device)
 # criterion = nn.HuberLoss()
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
-optimizer = optim.AdamW(model.parameters(), lr=2e-4, weight_decay=1e-5, betas=(0.9, 0.999))
-# optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
+optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
 # optimizer = optim.AdamW(model.parameters(), lr=0.001)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 

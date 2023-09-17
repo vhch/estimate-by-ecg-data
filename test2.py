@@ -9,7 +9,7 @@ from model import *
 
 # 모델 로드 함수
 def load_model(model_path):
-    model = Lstm()
+    model = Cnntobert()
     checkpoint = torch.load(model_path)
     model.load_state_dict(checkpoint['model_state_dict'])
     model = model.to(device).half()
@@ -19,8 +19,8 @@ def load_model(model_path):
 
 # 모델 로드
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model_child = load_model('lstm_child.pth')  # ecg_child_*를 위한 모델
-model_adult = load_model('lstm_adult.pth')  # ecg_adult_*를 위한 모델
+model_child = load_model('checkpoint/Cnntobert_child8.pth')  # ecg_child_*를 위한 모델
+model_adult = load_model('checkpoint/Cnntobert_adult2.pth')  # ecg_adult_*를 위한 모델
 
 
 csv_path = 'dataset/submission.csv'
