@@ -29,7 +29,7 @@ if not os.path.exists(checkpoint_dir):
 
 
 # GPU 사용 설정
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 # Paths
