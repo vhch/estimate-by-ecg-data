@@ -20,6 +20,13 @@ torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
+# 경로 설정
+checkpoint_dir = "checkpoint"
+
+# 경로에 디렉토리가 없으면 생성
+if not os.path.exists(checkpoint_dir):
+    os.makedirs(checkpoint_dir)
+
 
 # GPU 사용 설정
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
