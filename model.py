@@ -441,14 +441,14 @@ class Cnntobert2(nn.Module):
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
-        
+
         self.layer3 = nn.Sequential(
             nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7),
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
-        
+
         self.layer4 = nn.Sequential(
             nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7),
             nn.BatchNorm1d(512),
@@ -464,7 +464,8 @@ class Cnntobert2(nn.Module):
             hidden_size=256,
             num_hidden_layers=4,
             num_attention_heads=4,
-            intermediate_size=1024
+            intermediate_size=1024,
+            max_position_embeddings=1024
         )
         self.bert = BertModel(self.config)
         self.dropout = nn.Dropout(0.1)
@@ -508,44 +509,47 @@ class Cnn1d(nn.Module):
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
-        
+
         self.layer2 = nn.Sequential(
             nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7),
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
-        
+
         self.layer3 = nn.Sequential(
             nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7),
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
-        
+
         self.layer4 = nn.Sequential(
             nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7),
             nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
-        
-        self.fc1 = nn.Linear(512 * 312, 1024)  # Assuming that after 4 maxpooling layers the sequence length is 312. Adjust if necessary.
+
+        self.fc1 = nn.Linear(512 * 312 + 1, 1024)  # Assuming that after 4 maxpooling layers the sequence length is 312. Adjust if necessary.
         self.fc2 = nn.Linear(1024, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, x):
+    def forward(self, x, gender):
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
-        
+
         out = out.view(out.size(0), -1)
-        
+
+        out = torch.cat([out, gender.unsqueeze(1)], dim=1)
+
+
         out = F.relu(self.fc1(out))
         out = F.relu(self.fc2(out))
         out = self.fc3(out)
-        
+
         return out
 
 
@@ -565,10 +569,10 @@ class CNNGRUAgePredictor(nn.Module):
         self.gru = nn.GRU(input_size=128, hidden_size=64, num_layers=2, batch_first=True, dropout=0.5)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(64, 32)
+        self.fc1 = nn.Linear(64 + 1, 32)
         self.fc2 = nn.Linear(32, 1)
 
-    def forward(self, x):
+    def forward(self, x, gender):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.max_pool1d(x, 2)
         x = F.relu(self.bn2(self.conv2(x)))
@@ -578,12 +582,14 @@ class CNNGRUAgePredictor(nn.Module):
 
         # (batch_size, sequence_length, num_features)
         x = x.permute(0, 2, 1)
-        
+
         # RNN layers expect the input in the form (batch_size, sequence_length, num_features)
         _, h_n = self.gru(x)
 
         # Only take the output from the final timetep
         x = h_n[-1]
+
+        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
@@ -606,7 +612,7 @@ class EnhancedECGNet(nn.Module):
         self.bn4 = nn.BatchNorm1d(256)
 
         # Gender will be concatenated, so +1
-        self.fc1 = nn.Linear(256*625 + 1, 128)  # 5000 / 2 / 2 / 2 / 2 = 625
+        self.fc1 = nn.Linear(256*312 + 1, 128)  # 5000 / 2 / 2 / 2 / 2 = 625
         self.dropout1 = nn.Dropout(0.5)
         self.fc2 = nn.Linear(128, 64)
         self.dropout2 = nn.Dropout(0.5)
@@ -645,7 +651,7 @@ class ResidualBlock(nn.Module):
         self.bn1 = nn.BatchNorm1d(out_channels)
         self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
         self.bn2 = nn.BatchNorm1d(out_channels)
-        
+
         self.residual_transform = nn.Sequential(
             nn.Conv1d(in_channels, out_channels, kernel_size=1),
             nn.BatchNorm1d(out_channels)
@@ -666,11 +672,11 @@ class ECGResNet(nn.Module):
         super(ECGResNet, self).__init__()
 
         self.conv_initial = nn.Conv1d(12, 64, kernel_size=7, stride=1, padding=3)
-        
+
         self.block1 = ResidualBlock(64, 128)
         self.block2 = ResidualBlock(128, 256)
         self.block3 = ResidualBlock(256, 512)
-        
+
         self.global_avg_pool = nn.AdaptiveAvgPool1d(1)
         self.fc1 = nn.Linear(513, 256) # 512 + 1 (for gender)
         self.fc2 = nn.Linear(256, 1)
@@ -682,12 +688,11 @@ class ECGResNet(nn.Module):
         x = self.block3(x)
         x = self.global_avg_pool(x)
         x = x.view(x.size(0), -1)
-        
+
         # Concatenate with gender
         x = torch.cat([x, gender.unsqueeze(1)], dim=1)
-        
+
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
 
         return x
-
