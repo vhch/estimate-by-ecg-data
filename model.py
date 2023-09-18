@@ -569,10 +569,10 @@ class CNNGRUAgePredictor(nn.Module):
         self.gru = nn.GRU(input_size=128, hidden_size=64, num_layers=2, batch_first=True, dropout=0.5)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(64 + 1, 32)
+        self.fc1 = nn.Linear(64 + 2, 32)
         self.fc2 = nn.Linear(32, 1)
 
-    def forward(self, x, gender):
+    def forward(self, x, gender, age_group):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.max_pool1d(x, 2)
         x = F.relu(self.bn2(self.conv2(x)))
@@ -589,7 +589,7 @@ class CNNGRUAgePredictor(nn.Module):
         # Only take the output from the final timetep
         x = h_n[-1]
 
-        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)

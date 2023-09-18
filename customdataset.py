@@ -78,19 +78,28 @@ class CustomDataset_adult(Dataset):
         return torch.tensor(data, dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age, dtype=torch.long)
 
 
-# Custom Dataset
 class CustomDataset(Dataset):
     def __init__(self, csv_path, numpy_folder):
         self.df = pd.read_csv(csv_path)
         self.numpy_folder = numpy_folder
 
-        self.df = self.df[self.df['AGE'] <= 90]
+        # self.df = self.df[self.df['AGE'] <= 90]
+        self.df = self.df[self.df['AGE'] <= 101]
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         filename = self.df.iloc[idx]['FILENAME']
+
+        # Check if 'adult' or 'child' is in the filename
+        if 'adult' in filename:
+            age_group = 0  # Let's say 0 for adult
+        elif 'child' in filename:
+            age_group = 1  # And 1 for child
+        else:
+            age_group = 2  # 2 for others (if any)
+
         data = np.load(self.numpy_folder + '/' + filename + '.npy')
         data = data.reshape(12, 5000)
         age = self.df.iloc[idx]['AGE']
@@ -101,7 +110,7 @@ class CustomDataset(Dataset):
         else:
             gender = 2
 
-        return torch.tensor(data, dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age, dtype=torch.float32)
+        return torch.tensor(data, dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age, dtype=torch.float32), torch.tensor(age_group, dtype=torch.float32)
 
 
 class InferenceDataset(Dataset):
@@ -119,6 +128,15 @@ class InferenceDataset(Dataset):
 
     def __getitem__(self, idx):
         filename = self.df.iloc[idx]['FILENAME']
+
+        # Check if 'adult' or 'child' is in the filename
+        if 'adult' in filename:
+            age_group = 0  # Let's say 0 for adult
+        elif 'child' in filename:
+            age_group = 1  # And 1 for child
+        else:
+            age_group = 2  # 2 for others (if any)
+
         data = np.load(self.numpy_folder + '/' + filename + '.npy')
         data = data.reshape(12, 5000)
 
@@ -129,5 +147,4 @@ class InferenceDataset(Dataset):
         else:
             gender = 2
 
-        return torch.tensor(data, dtype=torch.float32), torch.tensor(gender, dtype=torch.float32)
-
+        return torch.tensor(data, dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age_group, dtype=torch.float32)

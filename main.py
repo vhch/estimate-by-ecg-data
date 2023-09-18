@@ -42,14 +42,14 @@ numpy_folder_child = 'dataset/child/train/'
 dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
 dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
-# dataset = ConcatDataset([dataset_adult, dataset_child])
+dataset = ConcatDataset([dataset_adult, dataset_child])
 
 # dataset = dataset_adult
-dataset = dataset_child
-batch_size = 100
+# dataset = dataset_child
+batch_size = 128
 num_epochs = 400
 accumulation_steps = 1
-checkpoint_path = 'checkpoint/Cnntobert_child2.pth'
+checkpoint_path = 'checkpoint/Cnntogru_concat_101cut.pth'
 
 
 train_len = int(0.9 * len(dataset))
@@ -63,7 +63,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 
 # model = Model().to(device)
-model = Cnntobert().to(device)
+model = CNNGRUAgePredictor().to(device)
 
 # Loss and Optimizer
 # criterion = nn.HuberLoss()
@@ -93,13 +93,14 @@ for epoch in range(start_epoch, num_epochs):
     model.train()
     train_loss = 0.0
 
-    for batch_idx, (data, gender, targets) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")):
-        # forward
-        data, gender, targets = data.to(device), gender.to(device), targets.to(device)
+    for batch_idx, (data, gender, targets, age_group) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")):
+        data, gender, targets, age_group = data.to(device), gender.to(device), targets.to(device), age_group.to(device)
         with autocast():
-            output = model(data)
+            output = model(data, gender, age_group)
             # print(data.shape)
             # print(gender.shape)
+            # print(targets.shape)
+            # print(age_group.shape)
             # print(output.shape)
             loss = criterion(output.reshape(-1), targets.reshape(-1))
 
@@ -120,9 +121,9 @@ for epoch in range(start_epoch, num_epochs):
     model.eval()
     val_loss = 0.0
     with torch.no_grad():
-        for batch_idx, (data, gender, targets) in enumerate(val_loader):
-            data, gender, targets = data.to(device), gender.to(device), targets.to(device)
-            outputs = model(data)
+        for batch_idx, (data, gender, targets, age_group) in enumerate(val_loader):
+            data, gender, targets, age_group = data.to(device), gender.to(device), targets.to(device), age_group.to(device)
+            outputs = model(data, gender, age_group)
             val_loss += criterion_val(outputs.reshape(-1), targets.reshape(-1)).item()
     # print(outputs[:5], targets[:5])
     val_loss /= len(val_loader)
