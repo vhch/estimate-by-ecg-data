@@ -437,7 +437,7 @@ class Cnntobert2(nn.Module):
         )
         self.layer2 = nn.Sequential(
             nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7),
-            nn.BatchNorm1d(128),
+            n.BatchNorm1d(128),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
@@ -612,13 +612,13 @@ class EnhancedECGNet(nn.Module):
         self.bn4 = nn.BatchNorm1d(256)
 
         # Gender will be concatenated, so +1
-        self.fc1 = nn.Linear(256*312 + 1, 128)  # 5000 / 2 / 2 / 2 / 2 = 625
+        self.fc1 = nn.Linear(256*312 + 2, 128)  # 5000 / 2 / 2 / 2 / 2 = 625
         self.dropout1 = nn.Dropout(0.5)
         self.fc2 = nn.Linear(128, 64)
         self.dropout2 = nn.Dropout(0.5)
         self.fc3 = nn.Linear(64, 1)
 
-    def forward(self, x, gender):
+    def forward(self, x, gender, age_group):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.max_pool1d(x, 2)
         x = F.relu(self.bn2(self.conv2(x)))
@@ -632,7 +632,7 @@ class EnhancedECGNet(nn.Module):
         x = x.view(x.size(0), -1)
 
         # Concatenate with gender
-        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.dropout1(x)
@@ -681,7 +681,7 @@ class ECGResNet(nn.Module):
         self.fc1 = nn.Linear(513, 256) # 512 + 1 (for gender)
         self.fc2 = nn.Linear(256, 1)
 
-    def forward(self, x, gender):
+    def forward(self, x, gender, age_group):
         x = self.conv_initial(x)
         x = self.block1(x)
         x = self.block2(x)
@@ -690,7 +690,7 @@ class ECGResNet(nn.Module):
         x = x.view(x.size(0), -1)
 
         # Concatenate with gender
-        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)

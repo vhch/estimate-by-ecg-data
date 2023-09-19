@@ -44,12 +44,17 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
 dataset = ConcatDataset([dataset_adult, dataset_child])
 
+print(len(dataset_adult))
+print(len(dataset))
+exit()
+
 # dataset = dataset_adult
 # dataset = dataset_child
 batch_size = 128
 num_epochs = 400
 accumulation_steps = 1
-checkpoint_path = 'checkpoint/Cnntogru_concat_80cut.pth'
+checkpoint_path = 'checkpoint/Cnntogru_concat_85cut.pth'
+checkpoint_path = 'checkpoint/1.pth'
 
 
 train_len = int(0.9 * len(dataset))
