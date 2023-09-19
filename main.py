@@ -49,7 +49,7 @@ dataset = ConcatDataset([dataset_adult, dataset_child])
 batch_size = 128
 num_epochs = 400
 accumulation_steps = 1
-checkpoint_path = 'checkpoint/Cnntogru_concat_101cut.pth'
+checkpoint_path = 'checkpoint/Cnntogru_concat_80cut.pth'
 
 
 train_len = int(0.9 * len(dataset))
@@ -64,6 +64,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 # model = Model().to(device)
 model = CNNGRUAgePredictor().to(device)
+# model = Cnn1d().to(device)
 
 # Loss and Optimizer
 # criterion = nn.HuberLoss()

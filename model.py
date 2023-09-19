@@ -471,10 +471,10 @@ class Cnntobert2(nn.Module):
         self.dropout = nn.Dropout(0.1)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(256 + 1, 64)
+        self.fc1 = nn.Linear(256 + 2, 64)
         self.fc2 = nn.Linear(64, 1)
 
-    def forward(self, x, gender):
+    def forward(self, x, gender, age_group):
         # CNN
         x = self.layer1(x)
         x = self.layer2(x)
@@ -492,7 +492,7 @@ class Cnntobert2(nn.Module):
         # BERT expects input of shape (batch, seq_len, feature_dim)
         outputs = self.bert(inputs_embeds=x)
         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
-        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
@@ -531,11 +531,11 @@ class Cnn1d(nn.Module):
             nn.MaxPool1d(kernel_size=2)
         )
 
-        self.fc1 = nn.Linear(512 * 312 + 1, 1024)  # Assuming that after 4 maxpooling layers the sequence length is 312. Adjust if necessary.
+        self.fc1 = nn.Linear(512 * 312 + 2, 1024)  # Assuming that after 4 maxpooling layers the sequence length is 312. Adjust if necessary.
         self.fc2 = nn.Linear(1024, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, x, gender):
+    def forward(self, x, gender, age_group):
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -543,7 +543,7 @@ class Cnn1d(nn.Module):
 
         out = out.view(out.size(0), -1)
 
-        out = torch.cat([out, gender.unsqueeze(1)], dim=1)
+        out = torch.cat([out, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
 
 
         out = F.relu(self.fc1(out))

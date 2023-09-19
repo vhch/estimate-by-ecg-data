@@ -84,7 +84,7 @@ class CustomDataset(Dataset):
         self.numpy_folder = numpy_folder
 
         # self.df = self.df[self.df['AGE'] <= 90]
-        self.df = self.df[self.df['AGE'] <= 101]
+        self.df = self.df[self.df['AGE'] <= 80]
 
     def __len__(self):
         return len(self.df)
