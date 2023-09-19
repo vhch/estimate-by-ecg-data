@@ -437,7 +437,7 @@ class Cnntobert2(nn.Module):
         )
         self.layer2 = nn.Sequential(
             nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7),
-            n.BatchNorm1d(128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
