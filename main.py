@@ -44,17 +44,13 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 
 dataset = ConcatDataset([dataset_adult, dataset_child])
 
-print(len(dataset_adult))
-print(len(dataset))
-exit()
 
 # dataset = dataset_adult
 # dataset = dataset_child
 batch_size = 128
 num_epochs = 400
-accumulation_steps = 1
-checkpoint_path = 'checkpoint/Cnntogru_concat_85cut.pth'
-checkpoint_path = 'checkpoint/1.pth'
+accumulation_steps = 4
+checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch512.pth'
 
 
 train_len = int(0.9 * len(dataset))
@@ -75,8 +71,8 @@ model = CNNGRUAgePredictor().to(device)
 # criterion = nn.HuberLoss()
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
-optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
-# optimizer = optim.AdamW(model.parameters(), lr=0.001)
+# optimizer = optim.AdamW(model.parameters(), lr=4e-4, weight_decay=1e-5, betas=(0.9, 0.999))
+optimizer = optim.AdamW(model.parameters(), lr=0.001)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
 best_val_loss = float('inf')
