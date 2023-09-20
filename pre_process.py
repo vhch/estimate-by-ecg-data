@@ -124,16 +124,16 @@ def filter_all_leads(data, fs):
         # Apply bandpass filter
         ecg_bandpass = butter_bandpass_filter(data[i], lowcut, highcut, fs)
         # ecg_denoised = denoise_ecg_wavelet(ecg_bandpass)
-        ecg_denoised = wavelet_denoising(ecg_bandpass)
+        # ecg_denoised = wavelet_denoising(ecg_bandpass)
 
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
-        ecg_notched = notch_filter(ecg_denoised, 60.0, 30, fs)
-        # ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
+        # ecg_notched = notch_filter(ecg_denoised, 60.0, 30, fs)
+        ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
 
-        ecg_avg = moving_average_filter(ecg_notched)
+        # ecg_avg = moving_average_filter(ecg_notched)
         # ecg_median = median_filter(ecg_avg, window_size=3)
 
-        filtered_data[i] = ecg_avg
+        filtered_data[i] = ecg_notched
 
     return filtered_data
 
@@ -189,17 +189,17 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         data = filter_all_leads(data, fs)
         data = z_score_normalization(data)
 
-        rr_means, rr_stds = find_rr_features(data, fs)
-
-        rr_means = rr_means.reshape(-1, 1)
-        rr_stds = rr_means.reshape(-1, 1)
-        data = np.hstack((data, rr_means, rr_stds))
+        # rr_means, rr_stds = find_rr_features(data, fs)
+        #
+        # rr_means = rr_means.reshape(-1, 1)
+        # rr_stds = rr_means.reshape(-1, 1)
+        # data = np.hstack((data, rr_means, rr_stds))
 
         # 결과를 .npy로 저장합니다.
         np.save(output_path, data)
 
 
-data_dir = "dataset/data_move_med"
+data_dir = "dataset/data_filt_zscore"
 
 # 함수를 호출하여 작업을 실행합니다.
 process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
