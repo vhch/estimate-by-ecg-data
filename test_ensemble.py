@@ -10,8 +10,8 @@ from model import *
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Stacked K-Fold 설정 (예: 5 folds)
-num_folds = 5
-checkpoints = [torch.load(f'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_move5_{i}.pth') for i in range(num_folds)]
+num_folds = 10
+checkpoints = [torch.load(f'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_move5-2_{i}.pth') for i in range(num_folds)]
 models = [CNNGRUAgePredictor().to(device).half() for _ in range(num_folds)]
 
 for model, checkpoint in zip(models, checkpoints):
