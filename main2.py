@@ -45,7 +45,9 @@ dataset = ConcatDataset([dataset_adult, dataset_child])
 # StratifiedKFold 설정
 n_splits = 5
 skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=SEED)
-labels = [age for _, _, _, age_group in dataset]
+labels = [targets for data, gender, targets, age_group in dataset]
+
+checkpoint_path = 'Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_medi_move'
 
 batch_size = 128
 num_epochs = 400
@@ -56,7 +58,6 @@ criterion = nn.MSELoss()
 criterion_val = nn.L1Loss()
 optimizer = optim.AdamW(model.parameters(), lr=4e-4)
 
-best_val_loss = float('inf')
 best_fold = -1
 
 for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
@@ -69,6 +70,8 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
     model = Cnntobert2().to(device)
     optimizer = optim.AdamW(model.parameters(), lr=4e-4)
     scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
+
+    best_val_loss = float('inf')
 
     for epoch in range(num_epochs):
         model.train()
@@ -116,8 +119,8 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
                 'epoch': epoch,
                 'best_val_loss': best_val_loss
             }
-            torch.save(checkpoint, f'{checkpoint_dir}/model_fold_{fold}.pth')
-            print(f"Fold: {fold+1}/{n_splits}, epoch:{epoch+1}, New best validation loss ({best_val_loss:.4f}), saving model: {checkpoint_dir}/model_fold_{fold}.pth")
+            torch.save(checkpoint, f'{checkpoint_dir}/{checkpoint_path}_{fold}.pth')
+            print(f"Fold: {fold+1}/{n_splits}, epoch:{epoch+1}, New best validation loss ({best_val_loss:.4f}), saving model: {checkpoint_dir}/{checkpoint_path}_{fold}.pth")
 
 print(f"Overall best validation loss: {best_val_loss:.4f} at fold {best_fold+1}")
 

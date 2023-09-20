@@ -1,6 +1,6 @@
+import os
 import numpy as np
 import pandas as pd
-import torch
 from torch.utils.data import Dataset, DataLoader, random_split, ConcatDataset
 from scipy.signal import butter, lfilter, freqz, iirnotch, find_peaks, medfilt
 import pywt
@@ -80,6 +80,35 @@ def moving_average_filter(data, window_size=5):
     # 'valid'는 원본 데이터와 같은 길이의 결과를 반환합니다.
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
 
+
+def denoise_ecg_wavelet(ecg_data, wavelet='db6', level=4, threshold_type='soft'):
+    """
+    ECG 데이터에 대한 Wavelet 노이즈 제거 함수
+
+    :param ecg_data: (12, 5000) 형태의 ECG 데이터
+    :param wavelet: 사용할 wavelet 종류. 'db6' 추천
+    :param level: 분해 레벨
+    :param threshold_type: 임계값 처리 방법 ('soft' 또는 'hard')
+    :return: 노이즈가 제거된 ECG 데이터
+    """
+
+    # 각 lead에 대해 wavelet 분해
+    coeffs = pywt.wavedec(ecg_data, wavelet, level=level)
+
+    # Universal thresholding (Donoho's method)
+    sigma = (np.median(np.abs(coeffs[-1]))) / 0.6745
+    threshold = sigma * np.sqrt(2 * np.log(len(ecg_data)))
+
+    # Coefficients thresholding
+    for j in range(1, len(coeffs)):
+        coeffs[j] = pywt.threshold(coeffs[j], threshold, mode=threshold_type)
+
+    # Reconstructed signal
+    denoised_data = pywt.waverec(coeffs, wavelet)
+
+    return denoised_data
+
+
 def filter_all_leads(data, fs):
     num_leads, num_samples = data.shape
     filtered_data = np.empty((num_leads, num_samples))
@@ -122,98 +151,39 @@ def find_rr_features(ecg_data, fs):
 
     return np.array(rr_means), np.array(rr_stds)
 
-
 fs = 500.0  # sampling frequency
 lowcut = 0.5
 highcut = 50.0
 
+def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
+    # 입력 csv를 불러옵니다.
+    df = pd.read_csv(csv_path)
+    
+    # 결과를 저장할 폴더가 존재하지 않는 경우 생성합니다.
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
-
-class CustomDataset(Dataset):
-    def __init__(self, csv_path, numpy_folder):
-        self.df = pd.read_csv(csv_path)
-        self.numpy_folder = numpy_folder
-
-        # Filter by age
-        self.df = self.df[self.df['AGE'] <= 85]
-
-        # # Remove entries with all-zero data
-        # valid_indices = []
-        # for idx in range(len(self.df)):
-        #     filename = self.df.iloc[idx]['FILENAME']
-        #     data = np.load(self.numpy_folder + '/' + filename + '.npy')
-        #     data = data.reshape(12, 5000)
-        #     if np.any(data != 0):  # 데이터 중 0이 아닌 값이 하나라도 있다면
-        #         valid_indices.append(idx)
-        # self.df = self.df.iloc[valid_indices].reset_index(drop=True)
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        filename = self.df.iloc[idx]['FILENAME']
-
-        # Check if 'adult' or 'child' is in the filename
-        if 'adult' in filename:
-            age_group = 0  # Let's say 0 for adult
-        elif 'child' in filename:
-            age_group = 1  # And 1 for child
-        else:
-            age_group = 2  # 2 for others (if any)
-
-        data = np.load(self.numpy_folder + '/' + filename + '.npy')
+    # 모든 파일에 대하여
+    for idx in range(len(df)):
+        filename = df.iloc[idx]['FILENAME']
+        input_path = os.path.join(numpy_folder, filename + '.npy')
+        output_path = os.path.join(output_folder, filename + '_processed.npy')
+        
+        # .npy 파일을 불러옵니다.
+        data = np.load(input_path)
         data = data.reshape(12, 5000)
-
+        
+        # 함수를 적용합니다.
         data = filter_all_leads(data, fs)
         data = z_score_normalization(data)
-
-        age = self.df.iloc[idx]['AGE']
-
-        if self.df.iloc[idx]['GENDER'] == 'MALE':
-            gender = 0
-        elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
-            gender = 1
-        else:
-            gender = 2
-
-        return torch.tensor(data.copy(), dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age, dtype=torch.float32), torch.tensor(age_group, dtype=torch.float32)
+        
+        # 결과를 .npy로 저장합니다.
+        np.save(output_path, data)
 
 
-class InferenceDataset(Dataset):
-    def __init__(self, csv_path, numpy_folder, file_list=None):
-        self.df = pd.read_csv(csv_path)
+data_dir = "data"
 
-        # 파일 목록이 제공된 경우 해당 파일만 선택
-        if file_list is not None:
-            self.df = self.df[self.df['FILENAME'].isin([f.replace('.npy', '') for f in file_list])]
+# 함수를 호출하여 작업을 실행합니다.
+process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
+process_and_save_npy_files('dataset/ECG_child_age_train.csv', 'dataset/child/train', data_dir)
 
-        self.numpy_folder = numpy_folder
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        filename = self.df.iloc[idx]['FILENAME']
-
-        # Check if 'adult' or 'child' is in the filename
-        if 'adult' in filename:
-            age_group = 0  # Let's say 0 for adult
-        elif 'child' in filename:
-            age_group = 1  # And 1 for child
-        else:
-            age_group = 2  # 2 for others (if any)
-
-        data = np.load(self.numpy_folder + '/' + filename + '.npy')
-        data = data.reshape(12, 5000)
-
-        data = filter_all_leads(data, fs)
-
-
-        if self.df.iloc[idx]['GENDER'] == 'MALE':
-            gender = 0
-        elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
-            gender = 1
-        else:
-            gender = 2
-
-        return torch.tensor(data.copy(), dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age_group, dtype=torch.float32)
