@@ -596,6 +596,56 @@ class CNNGRUAgePredictor(nn.Module):
 
         return x
 
+# class CNNGRUAgePredictor(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#
+#         # # 1D CNN layers
+#         # self.conv1 = nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7)
+#         # self.bn1 = nn.BatchNorm1d(64)
+#         # self.conv2 = nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7)
+#         # self.bn2 = nn.BatchNorm1d(128)
+#         # self.conv3 = nn.Conv1d(128, 128, kernel_size=15, stride=1, padding=7)
+#         # self.bn3 = nn.BatchNorm1d(128)
+#
+#         self.conv_initial = nn.Conv1d(12, 32, kernel_size=7, stride=1, padding=3)
+#
+#         self.block1 = ResidualBlock(32, 64)
+#         self.block2 = ResidualBlock(64, 128)
+#         self.block3 = ResidualBlock(128, 128)
+#
+#         # LSTM layer
+#         self.gru = nn.GRU(input_size=128, hidden_size=64, num_layers=2, batch_first=True, dropout=0.5)
+#
+#         # Fully connected layers
+#         self.fc1 = nn.Linear(64 + 2, 32)
+#         self.fc2 = nn.Linear(32, 1)
+#
+#     def forward(self, x, gender, age_group):
+#         x = self.conv_initial(x)
+#         x = self.block1(x)
+#         x = F.max_pool1d(x, 2)
+#         x = self.block2(x)
+#         x = F.max_pool1d(x, 2)
+#         x = self.block3(x)
+#         x = F.max_pool1d(x, 2)
+#
+#         # (batch_size, sequence_length, num_features)
+#         x = x.permute(0, 2, 1)
+#
+#         # RNN layers expect the input in the form (batch_size, sequence_length, num_features)
+#         _, h_n = self.gru(x)
+#
+#         # Only take the output from the final timetep
+#         x = h_n[-1]
+#
+#         x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+#
+#         x = F.relu(self.fc1(x))
+#         x = self.fc2(x)
+#
+#         return x
+
 
 class EnhancedECGNet(nn.Module):
     def __init__(self):
