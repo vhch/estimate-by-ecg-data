@@ -3,7 +3,30 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split, ConcatDataset
 from scipy.signal import butter, lfilter, freqz, iirnotch, find_peaks, medfilt
+from ecg_age.src.helpers.helpers import *
+from ecg_age.src.models.models import *
 import pywt
+from scipy import stats
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+import tensorflow as tf
+import tqdm
+from scipy import signal
+from tensorflow import keras
+#from keras.preprocessing.sequence import pad_sequences
+from sklearn.preprocessing import LabelEncoder
+from sklearn.utils.class_weight import compute_class_weight
+from sklearn.metrics import roc_auc_score
+from scipy.io import loadmat
+from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
+import warnings
 
 
 def min_max_scaling(data):
@@ -90,10 +113,10 @@ def filter_all_leads(data, fs):
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
         ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
 
-        ecg_avg = moving_average_filter(ecg_notched)
+        # ecg_avg = moving_average_filter(ecg_notched)
         # ecg_median = median_filter(ecg_avg)
 
-        filtered_data[i] = ecg_avg
+        filtered_data[i] = ecg_notched
 
     return filtered_data
 
@@ -131,24 +154,37 @@ highcut = 50.0
 
 class CustomDataset(Dataset):
     def __init__(self, csv_path, numpy_folder):
-        self.df = pd.read_csv(csv_path)
-        self.numpy_folder = numpy_folder
+        # self.df = pd.read_csv(csv_path)
+        # self.numpy_folder = numpy_folder
+        #
+        # # Filter by age
+        # self.df = self.df[self.df['AGE'] <= 85]
 
-        # Filter by age
-        self.df = self.df[self.df['AGE'] <= 85]
+        gender, age, labels, ecg_len, ecg_filenames = import_key_data("./data/")
+        ecg_filenames = np.asarray(ecg_filenames)
+        age = np.asarray(age)
+        gender = np.asarray(gender)
+        ecg_len = np.asarray(ecg_len)
+        labels = np.asarray(labels)
 
-        # # Remove entries with all-zero data
-        # valid_indices = []
-        # for idx in range(len(self.df)):
-        #     filename = self.df.iloc[idx]['FILENAME']
-        #     data = np.load(self.numpy_folder + '/' + filename + '.npy')
-        #     data = data.reshape(12, 5000)
-        #     if np.any(data != 0):  # 데이터 중 0이 아닌 값이 하나라도 있다면
-        #         valid_indices.append(idx)
-        # self.df = self.df.iloc[valid_indices].reset_index(drop=True)
+        age, gender, ecg_filenames, labels = only_ten_sec(ecg_len, age, gender, ecg_filenames, labels)
+        ecg_filenames, gender, age, labels = remove_nan_and_unknown_values(ecg_filenames, gender, age, labels)
+        ages = clean_up_age_data(age)
+        genders = clean_up_gender_data(gender)
+
+        data = []
+        for age, gender, label, filename in zip(ages, genders, labels, ecg_filenames):
+            ecg_data = load_challenge_data(filename)
+            data.append([age, gender, label, filename, ecg_data])
+
+        self.data = data
+
+        print(data)
+        exit()
+
 
     def __len__(self):
-        return len(self.df)
+        return len(self.data)
 
     def __getitem__(self, idx):
         filename = self.df.iloc[idx]['FILENAME']
