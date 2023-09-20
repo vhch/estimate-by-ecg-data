@@ -27,7 +27,7 @@ def z_score_normalization(data):
         std_val = np.std(data[i])
         
         if std_val == 0:  # 모든 값이 동일한 경우
-            print(data)
+            # print(data)
             normalized_data[i] = np.zeros_like(data[i])  # 0으로 설정
         else:
             normalized_data[i] = (data[i] - mean_val) / std_val
