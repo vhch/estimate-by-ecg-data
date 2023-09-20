@@ -32,14 +32,16 @@ if not os.path.exists(checkpoint_dir):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
+data_dir = 'dataset/data_wavefilt'
+
 # Paths
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
 numpy_folder_adult = 'dataset/adult/train/'
-numpy_folder_adult = 'dataset/data'
+numpy_folder_adult = data_dir
 
 csv_path_child = 'dataset/ECG_child_age_train.csv'
 numpy_folder_child = 'dataset/child/train/'
-numpy_folder_child = 'dataset/data'
+numpy_folder_child = data_dir
 
 dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
 dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
@@ -52,7 +54,7 @@ dataset = ConcatDataset([dataset_adult, dataset_child])
 batch_size = 128
 num_epochs = 400
 accumulation_steps = 1
-checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_medi_move.pth'
+checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_move_medi_wave.pth'
 
 
 train_len = int(0.9 * len(dataset))

@@ -81,7 +81,7 @@ def moving_average_filter(data, window_size=5):
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
 
 
-def denoise_ecg_wavelet(ecg_data, wavelet='db6', level=4, threshold_type='soft'):
+def denoise_ecg_wavelet(ecg_data, wavelet='db6', level=4, threshold_type='hard'):
     """
     ECG 데이터에 대한 Wavelet 노이즈 제거 함수
 
@@ -117,12 +117,13 @@ def filter_all_leads(data, fs):
         # Apply bandpass filter
         ecg_bandpass = butter_bandpass_filter(data[i], lowcut, highcut, fs)
         # ecg_denoised = denoise_ecg_wavelet(ecg_bandpass)
+
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
         # ecg_notched = notch_filter(ecg_denoised, 60.0, 30, fs)
         ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
 
-        # ecg_avg = moving_average_filter(ecg_notched)
-        ecg_median = median_filter(ecg_notched)
+        ecg_avg = moving_average_filter(ecg_notched)
+        ecg_median = median_filter(ecg_avg, window_size=3)
 
         filtered_data[i] = ecg_median
 
@@ -183,7 +184,7 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         np.save(output_path, data)
 
 
-data_dir = "dataset/data_nomove"
+data_dir = "dataset/data_move_med"
 
 # 함수를 호출하여 작업을 실행합니다.
 process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
