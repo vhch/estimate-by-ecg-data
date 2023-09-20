@@ -81,32 +81,39 @@ def moving_average_filter(data, window_size=5):
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
 
 
-def denoise_ecg_wavelet(ecg_data, wavelet='db6', level=4, threshold_type='hard'):
-    """
-    ECG 데이터에 대한 Wavelet 노이즈 제거 함수
+def wavelet_denoising(data):
+    coeffs = pywt.wavedec(data, 'db1', level=6)
+    coeffs[-1] = np.zeros_like(coeffs[-1])
+    coeffs[-2] = np.zeros_like(coeffs[-2])
+    reconstructed_data = pywt.waverec(coeffs, 'db1')
+    return reconstructed_data
 
-    :param ecg_data: (12, 5000) 형태의 ECG 데이터
-    :param wavelet: 사용할 wavelet 종류. 'db6' 추천
-    :param level: 분해 레벨
-    :param threshold_type: 임계값 처리 방법 ('soft' 또는 'hard')
-    :return: 노이즈가 제거된 ECG 데이터
-    """
-
-    # 각 lead에 대해 wavelet 분해
-    coeffs = pywt.wavedec(ecg_data, wavelet, level=level)
-
-    # Universal thresholding (Donoho's method)
-    sigma = (np.median(np.abs(coeffs[-1]))) / 0.6745
-    threshold = sigma * np.sqrt(2 * np.log(len(ecg_data)))
-
-    # Coefficients thresholding
-    for j in range(1, len(coeffs)):
-        coeffs[j] = pywt.threshold(coeffs[j], threshold, mode=threshold_type)
-
-    # Reconstructed signal
-    denoised_data = pywt.waverec(coeffs, wavelet)
-
-    return denoised_data
+# def denoise_ecg_wavelet(ecg_data, wavelet='db6', level=4, threshold_type='hard'):
+#     """
+#     ECG 데이터에 대한 Wavelet 노이즈 제거 함수
+#
+#     :param ecg_data: (12, 5000) 형태의 ECG 데이터
+#     :param wavelet: 사용할 wavelet 종류. 'db6' 추천
+#     :param level: 분해 레벨
+#     :param threshold_type: 임계값 처리 방법 ('soft' 또는 'hard')
+#     :return: 노이즈가 제거된 ECG 데이터
+#     """
+#
+#     # 각 lead에 대해 wavelet 분해
+#     coeffs = pywt.wavedec(ecg_data, wavelet, level=level)
+#
+#     # Universal thresholding (Donoho's method)
+#     sigma = (np.median(np.abs(coeffs[-1]))) / 0.6745
+#     threshold = sigma * np.sqrt(2 * np.log(len(ecg_data)))
+#
+#     # Coefficients thresholding
+#     for j in range(1, len(coeffs)):
+#         coeffs[j] = pywt.threshold(coeffs[j], threshold, mode=threshold_type)
+#
+#     # Reconstructed signal
+#     denoised_data = pywt.waverec(coeffs, wavelet)
+#
+#     return denoised_data
 
 
 def filter_all_leads(data, fs):
@@ -117,6 +124,7 @@ def filter_all_leads(data, fs):
         # Apply bandpass filter
         ecg_bandpass = butter_bandpass_filter(data[i], lowcut, highcut, fs)
         # ecg_denoised = denoise_ecg_wavelet(ecg_bandpass)
+        # ecg_denoised = wavelet_denoising(ecg_bandpass)
 
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
         # ecg_notched = notch_filter(ecg_denoised, 60.0, 30, fs)
@@ -189,4 +197,6 @@ data_dir = "dataset/data_move_med"
 # 함수를 호출하여 작업을 실행합니다.
 process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
 process_and_save_npy_files('dataset/ECG_child_age_train.csv', 'dataset/child/train', data_dir)
+
+print(f"task end : {data_dir}")
 
