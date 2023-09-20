@@ -124,16 +124,16 @@ def filter_all_leads(data, fs):
         # Apply bandpass filter
         ecg_bandpass = butter_bandpass_filter(data[i], lowcut, highcut, fs)
         # ecg_denoised = denoise_ecg_wavelet(ecg_bandpass)
-        # ecg_denoised = wavelet_denoising(ecg_bandpass)
+        ecg_denoised = wavelet_denoising(ecg_bandpass)
 
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
-        # ecg_notched = notch_filter(ecg_denoised, 60.0, 30, fs)
-        ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
+        ecg_notched = notch_filter(ecg_denoised, 60.0, 30, fs)
+        # ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
 
         ecg_avg = moving_average_filter(ecg_notched)
-        ecg_median = median_filter(ecg_avg, window_size=3)
+        # ecg_median = median_filter(ecg_avg, window_size=3)
 
-        filtered_data[i] = ecg_median
+        filtered_data[i] = ecg_avg
 
     return filtered_data
 
@@ -159,6 +159,7 @@ def find_rr_features(ecg_data, fs):
         # RR 간격의 평균 및 표준편차 계산 후 리스트에 추가
         rr_means.append(np.mean(rr_intervals))
         rr_stds.append(np.std(rr_intervals))
+
 
     return np.array(rr_means), np.array(rr_stds)
 
@@ -187,7 +188,13 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         # 함수를 적용합니다.
         data = filter_all_leads(data, fs)
         data = z_score_normalization(data)
-        
+
+        rr_means, rr_stds = find_rr_features(data, fs)
+
+        rr_means = rr_means.reshape(-1, 1)
+        rr_stds = rr_means.reshape(-1, 1)
+        data = np.hstack((data, rr_means, rr_stds))
+
         # 결과를 .npy로 저장합니다.
         np.save(output_path, data)
 

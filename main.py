@@ -32,8 +32,8 @@ if not os.path.exists(checkpoint_dir):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
-data_dir = 'dataset/data_move5_med3'
-checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_move5-med3.pth'
+data_dir = 'dataset/data_move5_wave'
+checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_move5_wave.pth'
 
 # Paths
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'

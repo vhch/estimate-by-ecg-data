@@ -90,8 +90,8 @@ def filter_all_leads(data, fs):
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
         ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
 
-        ecg_median = median_filter(ecg_notched)
-        ecg_avg = moving_average_filter(ecg_median)
+        ecg_avg = moving_average_filter(ecg_notched)
+        # ecg_median = median_filter(ecg_avg)
 
         filtered_data[i] = ecg_avg
 
@@ -207,6 +207,8 @@ class InferenceDataset(Dataset):
         data = data.reshape(12, 5000)
 
         data = filter_all_leads(data, fs)
+        data = z_score_normalization(data)
+
 
 
         if self.df.iloc[idx]['GENDER'] == 'MALE':
