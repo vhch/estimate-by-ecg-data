@@ -35,9 +35,11 @@ scaler = GradScaler()
 # Paths
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
 numpy_folder_adult = 'dataset/adult/train/'
+numpy_folder_adult = 'dataset/data'
 
 csv_path_child = 'dataset/ECG_child_age_train.csv'
 numpy_folder_child = 'dataset/child/train/'
+numpy_folder_child = 'dataset/data'
 
 dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
 dataset_child = CustomDataset(csv_path_child, numpy_folder_child)

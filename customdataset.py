@@ -164,8 +164,8 @@ class CustomDataset(Dataset):
         data = np.load(self.numpy_folder + '/' + filename + '.npy')
         data = data.reshape(12, 5000)
 
-        data = filter_all_leads(data, fs)
-        data = z_score_normalization(data)
+        # data = filter_all_leads(data, fs)
+        # data = z_score_normalization(data)
 
         age = self.df.iloc[idx]['AGE']
 

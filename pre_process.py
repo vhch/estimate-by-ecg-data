@@ -116,13 +116,15 @@ def filter_all_leads(data, fs):
     for i in range(num_leads):
         # Apply bandpass filter
         ecg_bandpass = butter_bandpass_filter(data[i], lowcut, highcut, fs)
+        # ecg_denoised = denoise_ecg_wavelet(ecg_bandpass)
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
+        # ecg_notched = notch_filter(ecg_denoised, 60.0, 30, fs)
         ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
 
+        # ecg_avg = moving_average_filter(ecg_notched)
         ecg_median = median_filter(ecg_notched)
-        ecg_avg = moving_average_filter(ecg_median)
 
-        filtered_data[i] = ecg_avg
+        filtered_data[i] = ecg_median
 
     return filtered_data
 
@@ -167,7 +169,7 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
     for idx in range(len(df)):
         filename = df.iloc[idx]['FILENAME']
         input_path = os.path.join(numpy_folder, filename + '.npy')
-        output_path = os.path.join(output_folder, filename + '_processed.npy')
+        output_path = os.path.join(output_folder, filename + '.npy')
         
         # .npy 파일을 불러옵니다.
         data = np.load(input_path)
@@ -181,7 +183,7 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         np.save(output_path, data)
 
 
-data_dir = "data"
+data_dir = "dataset/data_nomove"
 
 # 함수를 호출하여 작업을 실행합니다.
 process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
