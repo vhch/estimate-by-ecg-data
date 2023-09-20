@@ -20,13 +20,27 @@ def min_max_scaling(data):
     return normalized_data
 
 
-# Z-Score Normalization for 12 leads
 def z_score_normalization(data):
-    # Assuming data shape is (12, num_samples)
     normalized_data = np.zeros_like(data)
-    for i in range(data.shape[0]):
-        normalized_data[i] = (data[i] - np.mean(data[i])) / np.std(data[i])
+    for i in range(data.shape[0]):  # 각 lead에 대해서
+        mean_val = np.mean(data[i])
+        std_val = np.std(data[i])
+        
+        if std_val == 0:  # 모든 값이 동일한 경우
+            print(data)
+            normalized_data[i] = np.zeros_like(data[i])  # 0으로 설정
+        else:
+            normalized_data[i] = (data[i] - mean_val) / std_val
     return normalized_data
+
+
+# # Z-Score Normalization for 12 leads
+# def z_score_normalization(data):
+#     # Assuming data shape is (12, num_samples)
+#     normalized_data = np.zeros_like(data)
+#     for i in range(data.shape[0]):
+#         normalized_data[i] = (data[i] - np.mean(data[i])) / np.std(data[i])
+#     return normalized_data
 
 
 def extract_wavelet_features(ecg_lead):
@@ -114,8 +128,18 @@ class CustomDataset(Dataset):
         self.df = pd.read_csv(csv_path)
         self.numpy_folder = numpy_folder
 
-        # self.df = self.df[self.df['AGE'] <= 90]
+        # Filter by age
         self.df = self.df[self.df['AGE'] <= 85]
+
+        # Remove entries with all-zero data
+        valid_indices = []
+        for idx in range(len(self.df)):
+            filename = self.df.iloc[idx]['FILENAME']
+            data = np.load(self.numpy_folder + '/' + filename + '.npy')
+            data = data.reshape(12, 5000)
+            if np.any(data != 0):  # 데이터 중 0이 아닌 값이 하나라도 있다면
+                valid_indices.append(idx)
+        self.df = self.df.iloc[valid_indices].reset_index(drop=True)
 
     def __len__(self):
         return len(self.df)
@@ -135,9 +159,10 @@ class CustomDataset(Dataset):
         data = data.reshape(12, 5000)
 
         data = filter_all_leads(data, fs)
-        data = min_max_scaling(data)
+        data = z_score_normalization(data)
 
         age = self.df.iloc[idx]['AGE']
+
         if self.df.iloc[idx]['GENDER'] == 'MALE':
             gender = 0
         elif self.df.iloc[idx]['GENDER'] == 'FEMALE':

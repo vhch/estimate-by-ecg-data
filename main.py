@@ -50,7 +50,7 @@ dataset = ConcatDataset([dataset_adult, dataset_child])
 batch_size = 128
 num_epochs = 400
 accumulation_steps = 1
-checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_minmax.pth'
+checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm.pth'
 
 
 train_len = int(0.9 * len(dataset))
