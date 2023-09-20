@@ -35,16 +35,27 @@ def z_score_normalization(data):
 
 
 def extract_wavelet_features(ecg_lead):
-    coeffs = pywt.wavedec(ecg_lead, 'db1', level=4)
+    leads = ecg_lead.shape[0]
+    coeffs_list = []
+    for lead in range(leads):
+        ecg_channel = ecg_lead[lead]
+        coeffs = pywt.wavedec(ecg_channel, 'db1', level=4)
+        coeffs.append(coeffs[4])
     # Level 4 coefficients as feature
-    return coeffs[4]
+    return coeffs_list
 
 
 def extract_fourier_features(ecg_lead):
-    f_transform = np.fft.fft(ecg_lead)
-    # Magnitude of first N/2 elements (positive frequencies) as features
-    magnitude = np.abs(f_transform)[:len(ecg_lead)//2]
-    return magnitude
+    leads = ecg_lead.shape[0]
+    magnitude_list = []
+    for lead in range(leads):
+        ecg_channel = ecg_lead[lead]
+        f_transform = np.fft.fft(ecg_channel)
+        # Magnitude of first N/2 elements (positive frequencies) as features
+        magnitude = np.abs(f_transform)[:len(ecg_channel)//2]
+        magnitude_list.append(magnitude)
+    # Level 4 coefficients as feature
+    return magnitude_list
 
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
@@ -191,9 +202,12 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
 
         rr_means, rr_stds = find_rr_features(data, fs)
 
+        wave = extract_wavelet_features(data)
+        fourier = extract_fourier_features(data)
+
         rr_means = rr_means.reshape(-1, 1)
         rr_stds = rr_means.reshape(-1, 1)
-        data = np.hstack((data, rr_means, rr_stds))
+        data = np.hstack((data, rr_means, rr_stds, wave, fourier))
 
         # 결과를 .npy로 저장합니다.
         np.save(output_path, data)
