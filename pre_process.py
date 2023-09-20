@@ -226,8 +226,8 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         np.save(output_path, data)
 
 
-# data_dir = "dataset/data_filt_zscore_feature"
-data_dir = "dataset/data_test"
+data_dir = "dataset/data_filt_zscore_feature"
+# data_dir = "dataset/data_test"
 
 # 함수를 호출하여 작업을 실행합니다.
 process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
