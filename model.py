@@ -195,70 +195,70 @@ class Cnntobert_adult(nn.Module):
 
         return x
 
-class Cnntobert(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.conv1 = nn.Conv1d(in_channels=12, out_channels=16, kernel_size=5, stride=1, padding=2)
-        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
-        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2)
-        self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, stride=1, padding=2)
-        self.conv5 = nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, stride=1, padding=2)
-
-        self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
-        self.relu = nn.ReLU()
-
-        # BERT model
-        self.config = BertConfig(
-            hidden_size=256,
-            num_hidden_layers=8,
-            num_attention_heads=4,
-            intermediate_size=1024
-        )
-        self.bert = BertModel(self.config)
-        self.dropout = nn.Dropout(0.1)
-
-        # Fully connected layer after BERT
-        # BERT base has an output size of 768
-        self.fc = nn.Linear(in_features=self.config.hidden_size, out_features=1)
-
-    def forward(self, x):
-        # CNN
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        x = self.conv2(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        x = self.conv3(x)
-        x = self.relu(x)
-        x = self.pool(x)
-        
-        x = self.conv4(x)
-        x = self.relu(x)
-        x = self.pool(x)
-        
-        x = self.conv5(x)
-        x = self.relu(x)
-        x = self.pool(x)
-
-        # Flatten the CNN output to have a sequence length compatible with BERT
-        # Here, we're assuming the sequence length is compatible with the BERT variant being used.
-        # Adjust the reshaping as required.
-        # x = x.permute(0, 2, 1).flatten(1, -2)
-        x = x.permute(0, 2, 1)
-
-        # BERT expects input of shape (batch, seq_len, feature_dim)
-        outputs = self.bert(inputs_embeds=x)
-        x = outputs['last_hidden_state'][:, 0, :]  # CLS token
-        x = self.dropout(x)
-
-        # Fully connected layer
-        x = self.fc(x)
-
-        return x
+# class Cnntobert(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#
+#         self.conv1 = nn.Conv1d(in_channels=12, out_channels=16, kernel_size=5, stride=1, padding=2)
+#         self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
+#         self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2)
+#         self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, stride=1, padding=2)
+#         self.conv5 = nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, stride=1, padding=2)
+#
+#         self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
+#         self.relu = nn.ReLU()
+#
+#         # BERT model
+#         self.config = BertConfig(
+#             hidden_size=256,
+#             num_hidden_layers=8,
+#             num_attention_heads=4,
+#             intermediate_size=1024
+#         )
+#         self.bert = BertModel(self.config)
+#         self.dropout = nn.Dropout(0.1)
+#
+#         # Fully connected layer after BERT
+#         # BERT base has an output size of 768
+#         self.fc = nn.Linear(in_features=self.config.hidden_size, out_features=1)
+#
+#     def forward(self, x):
+#         # CNN
+#         x = self.conv1(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#
+#         x = self.conv2(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#
+#         x = self.conv3(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#         
+#         x = self.conv4(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#         
+#         x = self.conv5(x)
+#         x = self.relu(x)
+#         x = self.pool(x)
+#
+#         # Flatten the CNN output to have a sequence length compatible with BERT
+#         # Here, we're assuming the sequence length is compatible with the BERT variant being used.
+#         # Adjust the reshaping as required.
+#         # x = x.permute(0, 2, 1).flatten(1, -2)
+#         x = x.permute(0, 2, 1)
+#
+#         # BERT expects input of shape (batch, seq_len, feature_dim)
+#         outputs = self.bert(inputs_embeds=x)
+#         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
+#         x = self.dropout(x)
+#
+#         # Fully connected layer
+#         x = self.fc(x)
+#
+#         return x
 
 # class Cnntobert2(nn.Module):
 #     def __init__(self):
@@ -420,6 +420,84 @@ class LSTMtoBERT(nn.Module):
 ###########################################################################################
 
 
+class EnhancedCnntobert2(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+
+        self.layer2 = nn.Sequential(
+            nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+
+        self.layer3 = nn.Sequential(
+            nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+
+        self.layer4 = nn.Sequential(
+            nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+
+        self.layer5 = nn.Sequential(
+            nn.Conv1d(512, 1024, kernel_size=15, stride=1, padding=7),
+            nn.BatchNorm1d(1024),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2)
+        )
+
+        self.config = BertConfig(
+            hidden_size=512,
+            num_hidden_layers=6,
+            num_attention_heads=8,
+            intermediate_size=2048,
+            max_position_embeddings=1024
+        )
+        self.bert = BertModel(self.config)
+        self.dropout = nn.Dropout(0.2)
+
+        self.fc1 = nn.Linear(512 + 2 + 24, 256)  # Added two more feature inputs: rr_means, rr_stds
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, 1)
+
+    def forward(self, x, gender, age_group, rr_means, rr_stds, wave_ftt):
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        # x = self.layer5(x)
+
+        x = x.permute(0, 2, 1)
+
+        outputs = self.bert(inputs_embeds=x)
+        x = outputs['last_hidden_state'][:, 0, :]  # CLS token
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
+
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = F.relu(self.fc2(x))
+        x = self.dropout(x)
+        x = F.relu(self.fc3(x))
+        x = self.dropout(x)
+        x = self.fc4(x)
+
+        return x
+
+
 class Cnntobert2(nn.Module):
     def __init__(self):
         super().__init__()
@@ -471,10 +549,10 @@ class Cnntobert2(nn.Module):
         self.dropout = nn.Dropout(0.1)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(256 + 2, 64)
+        self.fc1 = nn.Linear(256 + 2, + 24, 64)
         self.fc2 = nn.Linear(64, 1)
 
-    def forward(self, x, gender, age_group):
+    def forward(self, x, gender, age_group, rr_means, rr_stds, wave_ftt):
         # CNN
         x = self.layer1(x)
         x = self.layer2(x)
@@ -492,7 +570,8 @@ class Cnntobert2(nn.Module):
         # BERT expects input of shape (batch, seq_len, feature_dim)
         outputs = self.bert(inputs_embeds=x)
         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
-        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
@@ -594,6 +673,50 @@ class CNNGRUAgePredictor(nn.Module):
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
+
+        return x
+
+class EnhancedCNNGRUAgePredictor(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        # 1D CNN layers
+        self.conv1 = nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7)
+        self.bn1 = nn.BatchNorm1d(64)
+        self.conv2 = nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.conv3 = nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7)
+        self.bn3 = nn.BatchNorm1d(256)
+        self.conv4 = nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7)
+        self.bn4 = nn.BatchNorm1d(512)
+
+        # LSTM layer
+        self.gru = nn.GRU(input_size=512, hidden_size=256, num_layers=4, batch_first=True, dropout=0.5)
+
+        # Fully connected layers
+        self.fc1 = nn.Linear(256 + 2 + 24, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 1)
+
+    def forward(self, x, gender, age_group, rr_means, rr_stds, wave_ftt):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = F.max_pool1d(x, 2)
+
+        x = x.permute(0, 2, 1)
+        _, h_n = self.gru(x)
+        x = h_n[-1]
+
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
+
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
 
         return x
 
