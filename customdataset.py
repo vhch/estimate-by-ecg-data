@@ -163,7 +163,6 @@ class CustomDataset(Dataset):
 
         data = np.load(self.numpy_folder + '/' + filename + '.npy')
         data = data.reshape(12, -1)
-        print(data.shape)
 
         # data = filter_all_leads(data, fs)
         # data = z_score_normalization(data)

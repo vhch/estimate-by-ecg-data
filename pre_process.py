@@ -166,10 +166,18 @@ def find_rr_features(ecg_data, fs):
         
         # RR 간격 계산
         rr_intervals = np.diff(peaks) / fs  # 샘플의 인덱스를 초로 변환
+
+        if len(rr_intervals) == 0:  # No valid RR intervals
+            rr_means.append(0)
+            rr_stds.append(0)
+        else:
+            # RR 간격의 평균 및 표준편차 계산 후 리스트에 추가
+            rr_means.append(np.mean(rr_intervals))
+            rr_stds.append(np.std(rr_intervals))
         
-        # RR 간격의 평균 및 표준편차 계산 후 리스트에 추가
-        rr_means.append(np.mean(rr_intervals))
-        rr_stds.append(np.std(rr_intervals))
+        # # RR 간격의 평균 및 표준편차 계산 후 리스트에 추가
+        # rr_means.append(np.mean(rr_intervals))
+        # rr_stds.append(np.std(rr_intervals))
 
 
     return np.array(rr_means), np.array(rr_stds)
@@ -218,7 +226,8 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         np.save(output_path, data)
 
 
-data_dir = "dataset/data_filt_zscore_feature"
+# data_dir = "dataset/data_filt_zscore_feature"
+data_dir = "dataset/data_test"
 
 # 함수를 호출하여 작업을 실행합니다.
 process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)

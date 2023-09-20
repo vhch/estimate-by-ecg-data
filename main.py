@@ -32,8 +32,8 @@ if not os.path.exists(checkpoint_dir):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
-data_dir = 'dataset/data_move5_wave'
-checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_move5_wave.pth'
+data_dir = 'dataset/data_filt_zscore_feature'
+checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_feature.pth'
 
 # Paths
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
@@ -101,8 +101,14 @@ for epoch in range(start_epoch, num_epochs):
 
     for batch_idx, (data, gender, targets, age_group) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")):
         data, gender, targets, age_group = data.to(device), gender.to(device), targets.to(device), age_group.to(device)
+        # print(data.shape)
+        rr_means = data[:, :, 5000]
+        rr_stds = data[:, :, 5001]
+        wave_ftt = data[:, :, 5002:]
+        data = data[:, :, :5000]
+
         with autocast():
-            output = model(data, gender, age_group)
+            output = model(data, gender, age_group, rr_means, rr_stds, wave_ftt)
             # print(data.shape)
             # print(gender.shape)
             # print(targets.shape)
@@ -129,7 +135,11 @@ for epoch in range(start_epoch, num_epochs):
     with torch.no_grad():
         for batch_idx, (data, gender, targets, age_group) in enumerate(val_loader):
             data, gender, targets, age_group = data.to(device), gender.to(device), targets.to(device), age_group.to(device)
-            outputs = model(data, gender, age_group)
+            rr_means = data[:, :, 5000]
+            rr_stds = data[:, :, 5001]
+            wave_ftt = data[:, :, 5002:]
+            data = data[:, :, :5000]
+            outputs = model(data, gender, age_group, rr_means, rr_stds, wave_ftt)
             val_loss += criterion_val(outputs.reshape(-1), targets.reshape(-1)).item()
     # print(outputs[:5], targets[:5])
     val_loss /= len(val_loader)
