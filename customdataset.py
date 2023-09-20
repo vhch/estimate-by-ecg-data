@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split, ConcatDataset
-from scipy.signal import butter, lfilter, freqz, iirnotch, find_peaks
+from scipy.signal import butter, lfilter, freqz, iirnotch, find_peaks, medfilt
 import pywt
 
 
@@ -78,6 +78,17 @@ def notch_filter(data, notch_freq, q, fs):
     return y
 
 
+def median_filter(data, window_size=5):
+    """메디안 필터 적용 함수"""
+    return medfilt(data, window_size)
+
+
+def moving_average_filter(data, window_size=5):
+    """이동 평균 필터 적용 함수"""
+    # convolve 함수를 사용하여 이동 평균 계산
+    # 'valid'는 원본 데이터와 같은 길이의 결과를 반환합니다.
+    return np.convolve(data, np.ones(window_size)/window_size, mode='same')
+
 def filter_all_leads(data, fs):
     num_leads, num_samples = data.shape
     filtered_data = np.empty((num_leads, num_samples))
@@ -87,6 +98,10 @@ def filter_all_leads(data, fs):
         ecg_bandpass = butter_bandpass_filter(data[i], lowcut, highcut, fs)
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
         ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
+
+        ecg_median = median_filter(ecg_notched)
+        ecg_avg = moving_average_filter(ecg_median)
+
         filtered_data[i] = ecg_notched
 
     return filtered_data
@@ -131,15 +146,15 @@ class CustomDataset(Dataset):
         # Filter by age
         self.df = self.df[self.df['AGE'] <= 85]
 
-        # Remove entries with all-zero data
-        valid_indices = []
-        for idx in range(len(self.df)):
-            filename = self.df.iloc[idx]['FILENAME']
-            data = np.load(self.numpy_folder + '/' + filename + '.npy')
-            data = data.reshape(12, 5000)
-            if np.any(data != 0):  # 데이터 중 0이 아닌 값이 하나라도 있다면
-                valid_indices.append(idx)
-        self.df = self.df.iloc[valid_indices].reset_index(drop=True)
+        # # Remove entries with all-zero data
+        # valid_indices = []
+        # for idx in range(len(self.df)):
+        #     filename = self.df.iloc[idx]['FILENAME']
+        #     data = np.load(self.numpy_folder + '/' + filename + '.npy')
+        #     data = data.reshape(12, 5000)
+        #     if np.any(data != 0):  # 데이터 중 0이 아닌 값이 하나라도 있다면
+        #         valid_indices.append(idx)
+        # self.df = self.df.iloc[valid_indices].reset_index(drop=True)
 
     def __len__(self):
         return len(self.df)
