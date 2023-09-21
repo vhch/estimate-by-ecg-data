@@ -182,7 +182,7 @@ class CustomDataset(Dataset):
                     age_group = 1
                 else:
                     age_group = 2
-                data.append([age, gender, filename, age_group, ecg_data])
+                # data.append([age, gender, filename, age_group, ecg_data])
                 data.append([age, gender, filename, age_group])
 
             # data = list(zip(ages, genders, ecg_filenames))
@@ -190,7 +190,7 @@ class CustomDataset(Dataset):
             # data 리스트를 DataFrame으로 변환
             # df = pd.DataFrame(self.data, columns=['Age', 'Gender', 'Filename', 'ECG_Data'])
             # df = pd.DataFrame(self.data, columns=['AGE', 'GENDER', 'FILENAME', "Age_group", "ECG_Data"])
-            df = pd.DataFrame(self.data, columns=['AGE', 'GENDER', 'FILENAME', "Age_group"])
+            df = pd.DataFrame(data, columns=['AGE', 'GENDER', 'FILENAME', "Age_group"])
             # df = pd.DataFrame(data, columns=['AGE', 'GENDER', 'FILENAME'])
 
             self.df = df
@@ -215,6 +215,7 @@ class CustomDataset(Dataset):
             # data = ecg_data[0]
             # data = self.df.iloc[idx]['ECG_Data']
             data = ecg_data[0]
+            # print(data)
 
             age = self.df.iloc[idx]['AGE']
             gender = self.df.iloc[idx]['GENDER']
