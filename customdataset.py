@@ -113,9 +113,6 @@ def filter_all_leads(data, fs):
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
         ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
 
-        # ecg_avg = moving_average_filter(ecg_notched)
-        # ecg_median = median_filter(ecg_avg)
-
         filtered_data[i] = ecg_notched
 
     return filtered_data
@@ -186,12 +183,14 @@ class CustomDataset(Dataset):
                 else:
                     age_group = 2
                 data.append([age, gender, filename, age_group, ecg_data])
+                data.append([age, gender, filename, age_group])
 
             # data = list(zip(ages, genders, ecg_filenames))
 
             # data 리스트를 DataFrame으로 변환
             # df = pd.DataFrame(self.data, columns=['Age', 'Gender', 'Filename', 'ECG_Data'])
-            df = pd.DataFrame(self.data, columns=['AGE', 'GENDER', 'FILENAME', "Age_group", "ECG_Data"])
+            # df = pd.DataFrame(self.data, columns=['AGE', 'GENDER', 'FILENAME', "Age_group", "ECG_Data"])
+            df = pd.DataFrame(self.data, columns=['AGE', 'GENDER', 'FILENAME', "Age_group"])
             # df = pd.DataFrame(data, columns=['AGE', 'GENDER', 'FILENAME'])
 
             self.df = df
@@ -212,12 +211,17 @@ class CustomDataset(Dataset):
         #     age_group = 2  # 2 for others (if any)
 
         if self.numpy_folder is None:
-            # ecg_data = load_challenge_data(filename)
+            ecg_data = load_challenge_data(filename)
             # data = ecg_data[0]
-            data = self.df.iloc[idx]['ECG_Data']
+            # data = self.df.iloc[idx]['ECG_Data']
+            data = ecg_data[0]
+
             age = self.df.iloc[idx]['AGE']
             gender = self.df.iloc[idx]['GENDER']
             age_group = self.df.iloc[idx]['GENDER']
+
+            data = filter_all_leads(data, fs)
+            data = z_score_normalization(data)
 
         else:
             data = np.load(self.numpy_folder + '/' + filename + '.npy')
@@ -239,8 +243,6 @@ class CustomDataset(Dataset):
             else:
                 gender = 2
 
-        # data = filter_all_leads(data, fs)
-        # data = z_score_normalization(data)
 
         return torch.tensor(data.copy(), dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age, dtype=torch.float32), torch.tensor(age_group, dtype=torch.float32)
 
