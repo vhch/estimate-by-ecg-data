@@ -777,7 +777,7 @@ class CNNGRUAgePredictor2(nn.Module):
         self.gru = nn.GRU(input_size=128, hidden_size=128, num_layers=2, batch_first=True, dropout=0.5)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(128 + 1, 64)
+        self.fc1 = nn.Linear(128 + 2, 64)
         self.fc2 = nn.Linear(64, 1)
 
         # self.linear = nn.Linear(12*35, 64)
@@ -802,8 +802,8 @@ class CNNGRUAgePredictor2(nn.Module):
         # features = features.reshape(-1, 12 * 35)
         # feature = F.relu(self.linear(features))
 
-        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
-        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+        # x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
         # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
         # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
 

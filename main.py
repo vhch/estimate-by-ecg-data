@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split, ConcatDataset
+from torch.utils.data import DataLoader, random_split, ConcatDataset, Subset
 from torch.cuda.amp import autocast, GradScaler
 from tqdm.auto import tqdm
 from transformers import get_cosine_schedule_with_warmup
@@ -11,6 +11,45 @@ import numpy as np
 
 from model import *
 from customdataset import CustomDataset
+
+
+class AugmentedSubset(Subset):
+    def __init__(self, subset, transform=None):
+        super(AugmentedSubset, self).__init__(subset.dataset, subset.indices)
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        data, gender, age, age_group = self.dataset[self.indices[idx]]
+        if self.transform:
+            data = self.transform(data)
+        data = torch.tensor(data, dtype=torch.float16).clone().detach()
+
+        return data, gender, age, age_group
+        # return torch.tensor(data, dtype=torch.float16), gender, age, age_group
+
+def time_shift(data, shift):
+    """
+    data: 2D numpy array of shape (12, 5000)
+    shift: integer, time shift value
+    """
+    if shift > 0:
+        return np.pad(data, ((0, 0), (shift, 0)), mode='constant')[:, :-shift]
+    elif shift < 0:
+        return np.pad(data, ((0, 0), (0, -shift)), mode='constant')[:, -shift:]
+    else:
+        return data
+
+def add_noise(data):
+    """
+    data: 2D numpy array of shape (12, 5000)
+    """
+    noise = np.random.normal(0, 0.05, data.shape)
+    return data + noise
+
+def train_augment(x):
+    x = time_shift(x, np.random.randint(-10, 10))
+    x = add_noise(x)
+    return x
 
 # Seed 값을 고정
 SEED = 42
@@ -32,7 +71,7 @@ if not os.path.exists(checkpoint_dir):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
-data_dir = 'dataset/data_filt_zscore_feature2'
+data_dir = 'dataset/data_filt_zscore'
 # checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_feature2.pth'
 # checkpoint_path = 'checkpoint/Cnntobert_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
 checkpoint_path = 'checkpoint/resnet_concat_85cut_batch128_4e-4_filter_zscorenorm_feature2.pth'
@@ -52,6 +91,7 @@ dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
 dataset = ConcatDataset([dataset_adult, dataset_child])
 
 
+
 # dataset = dataset_adult
 # dataset = dataset_child
 batch_size = 128
@@ -64,13 +104,16 @@ val_len = len(dataset) - train_len
 
 train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
 
+train_dataset = AugmentedSubset(train_dataset, transform=train_augment)
+val_dataset = AugmentedSubset(val_dataset, transform=None)
 
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
-val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num_workers=4)
+
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=0)
+val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num_workers=0)
 
 
 # model = Model().to(device)
-model = CNNGRUAgePredictor().to(device)
+model = CNNGRUAgePredictor2().to(device)
 # model = EnhancedCNNGRUAgePredictor().to(device)
 # model = Cnntobert2().to(device)
 # model = ECGResNet().to(device)
@@ -107,19 +150,8 @@ for epoch in range(start_epoch, num_epochs):
 
     for batch_idx, (data, gender, targets, age_group) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")):
         data, gender, targets, age_group = data.to(device), gender.to(device), targets.to(device), age_group.to(device)
-        # print(data.shape)
-        if torch.isnan(data).any() or torch.isinf(data).any():
-            nan_positions = torch.isnan(data)
-            inf_positions = torch.isinf(data)
-
-            print("Positions with NaN values in data: ", torch.nonzero(nan_positions))
-            print("Positions with Inf values in data: ", torch.nonzero(inf_positions))
-            print(f"Warning: NaN or Inf found in data on epoch {epoch+1}")
-        features = data[:, :, 5000:]
-        data = data[:, :, :5000]
-
         with autocast():
-            output = model(data, gender, age_group, features)
+            output = model(data, gender, age_group)
             # print(features[0,0,:])
             # print(data.shape)
             # print(gender.shape)
@@ -147,9 +179,7 @@ for epoch in range(start_epoch, num_epochs):
     with torch.no_grad():
         for batch_idx, (data, gender, targets, age_group) in enumerate(val_loader):
             data, gender, targets, age_group = data.to(device), gender.to(device), targets.to(device), age_group.to(device)
-            features = data[:, :, 5000:]
-            data = data[:, :, :5000]
-            outputs = model(data, gender, age_group, features)
+            outputs = model(data, gender, age_group)
             val_loss += criterion_val(outputs.reshape(-1), targets.reshape(-1)).item()
     # print(outputs[:5], targets[:5])
     val_loss /= len(val_loader)
