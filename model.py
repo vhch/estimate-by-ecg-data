@@ -551,10 +551,10 @@ class Cnntobert2(nn.Module):
         self.dropout = nn.Dropout(0.1)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(256 + 2 + 24, 64)
+        self.fc1 = nn.Linear(256 + 2, 64)
         self.fc2 = nn.Linear(64, 1)
 
-    def forward(self, x, gender, age_group, rr_means, rr_stds, wave_ftt):
+    def forward(self, x, gender, age_group):
         # CNN
         x = self.layer1(x)
         x = self.layer2(x)
@@ -573,7 +573,7 @@ class Cnntobert2(nn.Module):
         outputs = self.bert(inputs_embeds=x)
         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
         # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
-        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
@@ -678,6 +678,56 @@ class CNNGRUAgePredictor(nn.Module):
         # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
         # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
         x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
+
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+
+        return x
+
+class CNNGRUAgePredictor2(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        # 1D CNN layers
+        self.conv1 = nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7)
+        self.bn1 = nn.BatchNorm1d(64)
+        self.conv2 = nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.conv3 = nn.Conv1d(128, 128, kernel_size=15, stride=1, padding=7)
+        self.bn3 = nn.BatchNorm1d(128)
+
+        # LSTM layer
+        self.gru = nn.GRU(input_size=128, hidden_size=128, num_layers=2, batch_first=True, dropout=0.5)
+
+        # Fully connected layers
+        self.fc1 = nn.Linear(128 + 2, 64)
+        self.fc2 = nn.Linear(64, 1)
+
+        # self.linear = nn.Linear(12*35, 64)
+
+    def forward(self, x, gender, age_group):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.max_pool1d(x, 2)
+
+        # (batch_size, sequence_length, num_features)
+        x = x.permute(0, 2, 1)
+
+        # RNN layers expect the input in the form (batch_size, sequence_length, num_features)
+        _, h_n = self.gru(x)
+
+        # Only take the output from the final timetep
+        x = h_n[-1]
+
+        # features = features.reshape(-1, 12 * 35)
+        # feature = F.relu(self.linear(features))
+
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
+        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
@@ -860,7 +910,7 @@ class ECGResNet(nn.Module):
         self.block3 = ResidualBlock(256, 512)
 
         self.global_avg_pool = nn.AdaptiveAvgPool1d(1)
-        self.fc1 = nn.Linear(513, 256) # 512 + 1 (for gender)
+        self.fc1 = nn.Linear(512 + 2, 256) # 512 + 1 (for gender)
         self.fc2 = nn.Linear(256, 1)
 
     def forward(self, x, gender, age_group):

@@ -33,8 +33,9 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 data_dir = 'dataset/data_filt_zscore_feature'
-checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_feature2.pth'
+# checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_feature2.pth'
 # checkpoint_path = 'checkpoint/Cnntobert_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
+checkpoint_path = 'checkpoint/resnet_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
 
 # Paths
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
@@ -69,9 +70,10 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 
 # model = Model().to(device)
-model = CNNGRUAgePredictor().to(device)
+# model = CNNGRUAgePredictor().to(device)
 # model = EnhancedCNNGRUAgePredictor().to(device)
 # model = Cnntobert2().to(device)
+model = ECGResNet().to(device)
 # model = Cnn1d().to(device)
 
 # Loss and Optimizer
@@ -79,8 +81,8 @@ model = CNNGRUAgePredictor().to(device)
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
 # optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5, betas=(0.9, 0.999))
-optimizer = optim.AdamW(model.parameters(), lr=1e-3)
-# optimizer = optim.AdamW(model.parameters(), lr=4e-4)
+# optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+optimizer = optim.AdamW(model.parameters(), lr=4e-4)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
 best_val_loss = float('inf')
