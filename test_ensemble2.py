@@ -9,8 +9,8 @@ from model import *
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 num_folds = 10
-child_checkpoints = [f'checkpoint/Cnntobert_child_{i}.pth' for i in range(num_folds)]
-adult_checkpoints = [f'checkpoint/Cnntobert_adult_{i}.pth' for i in range(num_folds)]
+child_checkpoints = [f'checkpoint/Cnntogru_child_85cut_batch128_1e-3_filter_zscorenorm_{i}.pth' for i in range(num_folds)]
+adult_checkpoints = [f'checkpoint/Cnntogru_adult_85cut_batch128_1e-3_filter_zscorenorm_{i}.pth' for i in range(num_folds)]
 
 csv_path = 'dataset/submission.csv'
 numpy_folder = 'dataset/valid/'
@@ -21,11 +21,11 @@ def infer_age(checkpoints, loader):
     predicted_ages = []
 
     # 모델을 저장할 임시 변수 초기화
-    temp_model = Cnntobert().to(device).half()
+    temp_model = CNNGRUAgePredictor2().to(device).half()
 
     with torch.no_grad():
-        for data, gender in loader:
-            data, gender = data.to(device).half(), gender.to(device).half()
+        for data, gender, age_group in loader:
+            data, gender, age_group = data.to(device).half(), gender.to(device).half(), age_group.to(device).half()
 
             fold_predictions = []
 
@@ -35,7 +35,7 @@ def infer_age(checkpoints, loader):
                 temp_model.load_state_dict(checkpoint['model_state_dict'])
                 temp_model.eval()
 
-                outputs = temp_model(data)
+                outputs = temp_model(data, gender, age_group)
                 fold_predictions.append(outputs.cpu().numpy().flatten())
 
             mean_predictions = np.mean(fold_predictions, axis=0)

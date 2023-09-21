@@ -28,53 +28,71 @@ class AugmentedSubset(Subset):
         return data, gender, age, age_group
         # return torch.tensor(data, dtype=torch.float16), gender, age, age_group
 
-def time_shift(data, shift):
-    """
-    data: 2D numpy array of shape (12, 5000)
-    shift: integer, time shift value
-    """
-    if shift > 0:
-        return np.pad(data, ((0, 0), (shift, 0)), mode='constant')[:, :-shift]
-    elif shift < 0:
-        return np.pad(data, ((0, 0), (0, -shift)), mode='constant')[:, -shift:]
-    else:
-        return data
+# Time Shifting
+def time_shift(signal, max_shift):
+    shift = random.randint(-max_shift, max_shift)
+    return np.roll(signal, shift)
 
-def add_noise(data):
-    """
-    data: 2D numpy array of shape (12, 5000)
-    """
-    noise = np.random.normal(0, 0.05, data.shape)
-    return data + noise
+# Adding Noise
+def add_noise(signal, noise_level):
+    noise = noise_level * np.random.normal(size=signal.shape)
+    return signal + noise
 
-def lead_permutation(data):
-    """
-    data: 2D numpy array of shape (12, n), where n is the number of data points for each lead.
-    """
-    return np.random.permutation(data)
-
-def random_scale(signal, min_scale=0.95, max_scale=1.05):
-    scale_factor = np.random.uniform(min_scale, max_scale)
+# Random Scaling
+def random_scale(signal, low=0.9, high=1.1):
+    scale_factor = random.uniform(low, high)
     return signal * scale_factor
 
-def time_stretch_multi_lead(signal, stretch_factor):
-    stretched_signal = np.zeros_like(signal)
-    for i in range(signal.shape[0]):  # 여기서 0번째 차원이 lead에 해당되어야 합니다.
-        stretched_signal[i] = time_stretch(signal[i], stretch_factor)
+# Time Stretching
+def time_stretch(signal, low=0.9, high=1.1):
+    stretch_factor = random.uniform(low, high)
+    n = len(signal)
+    x = np.linspace(0, n-1, n)
+    x_stretched = np.linspace(0, n-1, int(n * stretch_factor))
+    interpolator = interp1d(x, signal, kind='linear', fill_value='extrapolate')
+    stretched_signal = interpolator(x_stretched)
+
+    if len(stretched_signal) < n:
+        padding = n - len(stretched_signal)
+        stretched_signal = np.pad(stretched_signal, (0, padding), 'constant')
+    else:
+        stretched_signal = stretched_signal[:n]
+
     return stretched_signal
 
-def frequency_shift_multi_lead(signal, shift_amount):
-    shifted_signal = np.zeros_like(signal, dtype=np.float64)  # 복소수 값을 다룰 수 있도록 dtype을 설정
-    for i in range(signal.shape[0]):
-        shifted_signal[i] = frequency_shift(signal[i], shift_amount)
-    return np.real(shifted_signal)  # 실수 부분만 반환
+# Apply Augmentations
+def augment_ecg(signal, max_shift=50, noise_level=0.01):
+    # Time shift
+    augmented_signal = time_shift(signal, max_shift)
 
-def train_augment(x):
-    x = time_shift(x, np.random.randint(-10, 10))
-    x = add_noise(x)
-    x = random_scale(x)
-    x = lead_permutation(x)
-    return x
+    # Add noise
+    augmented_signal = add_noise(augmented_signal, noise_level)
+
+    # Random scaling
+    augmented_signal = random_scale(augmented_signal)
+
+    # # Time stretching (assuming the signal length stays the same)
+    # stretch_len = len(augmented_signal)
+    # augmented_signal = time_stretch(augmented_signal)[:stretch_len]
+
+    return augmented_signal
+
+# Assume ecg_lead is a single ECG lead of shape (5000,)
+# For multi-lead, loop over each lead
+# ecg_lead = np.random.randn(5000)  # replace with actual ECG lead
+# augmented_lead = augment_ecg(ecg_lead)
+
+# For multi-lead ECG signal assumed to be of shape (num_leads, signal_length)
+# ecg_data = np.random.randn(12, 5000)  # replace with actual ECG data
+# augmented_data = np.zeros_like(ecg_data)
+# for i in range(ecg_data.shape[0]):
+#     augmented_data[i] = augment_ecg(ecg_data[i])
+
+def train_augment(ecg_data):
+    augmented_data = np.zeros_like(ecg_data)
+    for i in range(ecg_data.shape[0]):
+        augmented_data[i] = augment_ecg(ecg_data[i])
+    return augmented_data
 
 # Seed 값을 고정
 SEED = 42
@@ -97,7 +115,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 data_dir = 'dataset/data_filt_zscore'
-checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_timeshift_addnoise_randomscale_permutation.pth'
+checkpoint_path = 'checkpoint/Cnntogru_concat_100cut_batch128_1e-3_filter_zscorenorm_timeshift_addnoise_randomscale_permutation.pth'
 # checkpoint_path = 'checkpoint/Cnntobert_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
 # checkpoint_path = 'checkpoint/resnet_concat_85cut_batch128_4e-4_filter_zscorenorm_feature2.pth'
 
@@ -137,8 +155,8 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 
 # model = Model().to(device)
-model = CNNGRUAgePredictor().to(device)
-# model = EnhancedCNNGRUAgePredictor().to(device)
+# model = CNNGRUAgePredictor().to(device)
+model = EnhancedCNNGRUAgePredictor().to(device)
 # model = Cnntobert2().to(device)
 # model = ECGResNet().to(device)
 # model = Cnn1d().to(device)
@@ -148,7 +166,7 @@ model = CNNGRUAgePredictor().to(device)
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
 # optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5, betas=(0.9, 0.999))
-optimizer = optim.AdamW(model.parameters(), lr=4e-3)
+optimizer = optim.AdamW(model.parameters(), lr=4e-4)
 # optimizer = optim.AdamW(model.parameters(), lr=4e-4)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 

@@ -90,10 +90,10 @@ def filter_all_leads(data, fs):
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
         ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
 
-        ecg_avg = moving_average_filter(ecg_notched)
+        # ecg_avg = moving_average_filter(ecg_notched)
         # ecg_median = median_filter(ecg_avg)
 
-        filtered_data[i] = ecg_avg
+        filtered_data[i] = ecg_notched
 
     return filtered_data
 
@@ -135,7 +135,7 @@ class CustomDataset(Dataset):
         self.numpy_folder = numpy_folder
 
         # Filter by age
-        self.df = self.df[self.df['AGE'] <= 85]
+        self.df = self.df[self.df['AGE'] <= 100]
 
         # # Remove entries with all-zero data
         # valid_indices = []
