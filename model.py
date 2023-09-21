@@ -502,11 +502,6 @@ class Cnntobert2(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # self.conv1 = nn.Conv1d(in_channels=12, out_channels=16, kernel_size=5, stride=1, padding=2)
-        # self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2)
-        # self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=5, stride=1, padding=2)
-        # self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=5, stride=1, padding=2)
-        # self.conv5 = nn.Conv1d(in_channels=128, out_channels=256, kernel_size=5, stride=1, padding=2)
         self.layer1 = nn.Sequential(
             nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7),
             nn.BatchNorm1d(64),
@@ -549,7 +544,7 @@ class Cnntobert2(nn.Module):
         self.dropout = nn.Dropout(0.1)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(256 + 2, + 24, 64)
+        self.fc1 = nn.Linear(256 + 2 + 24, 64)
         self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x, gender, age_group, rr_means, rr_stds, wave_ftt):

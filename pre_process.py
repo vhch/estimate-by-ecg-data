@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader, random_split, ConcatDataset
 from scipy.signal import butter, lfilter, freqz, iirnotch, find_peaks, medfilt
+from biosppy.signals import ecg  # biosppy 라이브러리를 임포트
 import pywt
 
 

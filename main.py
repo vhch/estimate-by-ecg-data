@@ -34,7 +34,7 @@ scaler = GradScaler()
 
 data_dir = 'dataset/data_filt_zscore_feature'
 # checkpoint_path = 'checkpoint/enhanceCnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_feature.pth'
-checkpoint_path = 'checkpoint/enhanceCnntobert_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
+checkpoint_path = 'checkpoint/Cnntobert_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
 
 # Paths
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
@@ -71,7 +71,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 # model = Model().to(device)
 # model = CNNGRUAgePredictor().to(device)
 # model = EnhancedCNNGRUAgePredictor().to(device)
-model = EnhancedCnntobert2().to(device)
+model = Cnntobert2().to(device)
 # model = Cnn1d().to(device)
 
 # Loss and Optimizer
