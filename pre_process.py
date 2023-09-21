@@ -198,12 +198,12 @@ def extract_ecg_features(ecg_data, fs):
         wavelet_features = extract_wavelet_features(signal)
         lead_features.extend((wavelet_features))
 
-        for r in r_peaks:
-            p_wave_segment = signal[max(0, r-50):r]  # 예: R-peak 전 50개 샘플을 P-wave로 가정
-            t_wave_segment = signal[r:min(len(signal), r+50)]  # 예: R-peak 후 50개 샘플을 T-wave로 가정
-
-            lead_features.append((extract_basic_stats(p_wave_segment)))
-            lead_features.append((extract_basic_stats(t_wave_segment)))
+        # for r in r_peaks:
+        #     p_wave_segment = signal[max(0, r-50):r]  # 예: R-peak 전 50개 샘플을 P-wave로 가정
+        #     t_wave_segment = signal[r:min(len(signal), r+50)]  # 예: R-peak 후 50개 샘플을 T-wave로 가정
+        #
+        #     lead_features.append((extract_basic_stats(p_wave_segment)))
+        #     lead_features.append((extract_basic_stats(t_wave_segment)))
 
 
         # 해당 리드의 모든 특성을 리스트에 추가
@@ -250,8 +250,8 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         data = z_score_normalization(data)
 
         all_features = extract_ecg_features(data, fs)
-        # print(np.array(all_features).shape)
-        print(all_features)
+        print(np.array(all_features).shape)
+        # print(all_features)
         # print(np.array(wave).shape)
         # print(np.array(fourier).shape)
         # print(np.array(rr_means).shape)
