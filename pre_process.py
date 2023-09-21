@@ -196,7 +196,7 @@ def extract_ecg_features(ecg_data, fs):
 
         # Wavelet 특성
         wavelet_features = extract_wavelet_features(signal)
-        lead_features.append((wavelet_features))
+        lead_features.extend((wavelet_features))
 
         for r in r_peaks:
             p_wave_segment = signal[max(0, r-50):r]  # 예: R-peak 전 50개 샘플을 P-wave로 가정
@@ -250,7 +250,8 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         data = z_score_normalization(data)
 
         all_features = extract_ecg_features(data, fs)
-        print(np.array(all_features).shape)
+        # print(np.array(all_features).shape)
+        print(all_features)
         # print(np.array(wave).shape)
         # print(np.array(fourier).shape)
         # print(np.array(rr_means).shape)
