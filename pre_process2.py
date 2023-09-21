@@ -7,6 +7,24 @@ from biosppy.signals import ecg  # biosppy 라이브러리를 임포트
 import pywt
 import scipy
 from sklearn.decomposition import PCA
+from ecg_age.src.helpers.helpers import *
+from ecg_age.src.models.models import *
+from scipy import stats
+# from scipy import signal
+from tensorflow import keras
+#from keras.preprocessing.sequence import pad_sequences
+from sklearn.preprocessing import LabelEncoder
+from sklearn.utils.class_weight import compute_class_weight
+from sklearn.metrics import roc_auc_score
+from scipy.io import loadmat
+from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
+
 
 
 def min_max_scaling(data):
@@ -92,7 +110,7 @@ def filter_all_leads(data, fs):
 
         # If you're in a region with 60Hz powerline interference, you can also apply a 60Hz notch filter
         # ecg_notched = notch_filter(ecg_denoised, 60.0, 30, fs)
-        ecg_notched = notch_filter(ecg_bandpass, 60.0, 30, fs)
+        ecg_notched = notch_filter(ecg_bandpass, 50.0, 30, fs)
 
         # ecg_avg = moving_average_filter(ecg_notched)
         # ecg_median = median_filter(ecg_avg, window_size=3)
@@ -256,47 +274,80 @@ fs = 500.0  # sampling frequency
 lowcut = 0.5
 highcut = 50.0
 
-def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
-    # 입력 csv를 불러옵니다.
-    df = pd.read_csv(csv_path)
+# def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
+#     # 입력 csv를 불러옵니다.
+#     df = pd.read_csv(csv_path)
+#
+#     # 결과를 저장할 폴더가 존재하지 않는 경우 생성합니다.
+#     if not os.path.exists(output_folder):
+#         os.makedirs(output_folder)
+#
+#     # 모든 파일에 대하여
+#     for idx in range(len(df)):
+#         filename = df.iloc[idx]['FILENAME']
+#         input_path = os.path.join(numpy_folder, filename + '.npy')
+#         output_path = os.path.join(output_folder, filename + '.npy')
+#
+#         # .npy 파일을 불러옵니다.
+#         data = np.load(input_path)
+#         data = data.reshape(12, 5000)
+#
+#         # 함수를 적용합니다.
+#         data = filter_all_leads(data, fs)
+#         data = z_score_normalization(data)
+#
+#         all_features = extract_ecg_features(data, fs, filename)
+#         # print(np.array(all_features).shape)
+#         # print(all_features)
+#         # print(np.array(wave).shape)
+#         # print(np.array(fourier).shape)
+#         # print(np.array(rr_means).shape)
+#         # print(np.array(rr_stds).shape)
+#         pca = perform_pca(data)
+#         data = np.hstack((data, pca, all_features))
+#
+#         # 결과를 .npy로 저장합니다.
+#         np.save(output_path, data)
 
-    # 결과를 저장할 폴더가 존재하지 않는 경우 생성합니다.
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+def process_and_save_data(input_folder, output_folder):
+    for subdir, dirs, files in sorted(os.walk(input_folder)):
+        for filename in files:
+            if filename.endswith(".mat"):
+                filepath = os.path.join(subdir, filename)
+                
+                # Load MAT file
+                data, _ = load_challenge_data(filepath)
+                print(type(data))
+                print(data.shape)
+                
+                # Filtering and normalization
+                data = filter_all_leads(data, 500.0)  # Assuming fs is 500.0
+                data = z_score_normalization(data)
 
-    # 모든 파일에 대하여
-    for idx in range(len(df)):
-        filename = df.iloc[idx]['FILENAME']
-        input_path = os.path.join(numpy_folder, filename + '.npy')
-        output_path = os.path.join(output_folder, filename + '.npy')
+                all_features = extract_ecg_features(data, fs, filename)
 
-        # .npy 파일을 불러옵니다.
-        data = np.load(input_path)
-        data = data.reshape(12, 5000)
-
-        # 함수를 적용합니다.
-        data = filter_all_leads(data, fs)
-        data = z_score_normalization(data)
-
-        all_features = extract_ecg_features(data, fs, filename)
-        # print(np.array(all_features).shape)
-        # print(all_features)
-        # print(np.array(wave).shape)
-        # print(np.array(fourier).shape)
-        # print(np.array(rr_means).shape)
-        # print(np.array(rr_stds).shape)
-        pca = perform_pca(data)
-        data = np.hstack((data, pca, all_features))
-
-        # 결과를 .npy로 저장합니다.
-        np.save(output_path, data)
+                print("Data shape:", data.shape)  # Data의 형태를 출력
+                print("Data type:", data.dtype)  # Data의 데이터 타입을 출력
+                print("Are there NaN values?", np.isnan(data).any())  # NaN 값이 있는지 확인
+                print("Are there Inf values?", np.isinf(data).any())  # 무한값이 있는지 확인
 
 
-data_dir = "dataset/data_filt_zscore_feature2"
-# data_dir = "dataset/data_test"
+                pca = perform_pca(data)
+                data = np.hstack((data, pca, all_features))
+                
+                # Save to NPY file
+                output_filepath = os.path.join(output_folder, filename.replace('.mat', '.npy'))
+                np.save(output_filepath, data)
 
-# 함수를 호출하여 작업을 실행합니다.
-process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
-process_and_save_npy_files('dataset/ECG_child_age_train.csv', 'dataset/child/train', data_dir)
 
-print(f"task end : {data_dir}")
+# 사용 예
+input_folder = "./data"
+output_folder = "./pretrained_data"
+
+# output 폴더가 없다면 생성
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+process_and_save_data(input_folder, output_folder)
+
+print(f"task end : {output_folder}")
