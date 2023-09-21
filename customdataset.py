@@ -153,79 +153,94 @@ highcut = 50.0
 
 
 class CustomDataset(Dataset):
-    def __init__(self, csv_path, numpy_folder):
-        # self.df = pd.read_csv(csv_path)
-        # self.numpy_folder = numpy_folder
-        #
-        # # Filter by age
-        # self.df = self.df[self.df['AGE'] <= 85]
+    def __init__(self, csv_path=None, numpy_folder=None):
+        if csv_path is not None:
+            self.df = pd.read_csv(csv_path)
+            self.numpy_folder = numpy_folder
 
-        gender, age, labels, ecg_len, ecg_filenames = import_key_data("./data/")
-        ecg_filenames = np.asarray(ecg_filenames)
-        age = np.asarray(age)
-        gender = np.asarray(gender)
-        ecg_len = np.asarray(ecg_len)
-        labels = np.asarray(labels)
+            # Filter by age
+            self.df = self.df[self.df['AGE'] <= 85]
+        else:
+            gender, age, labels, ecg_len, ecg_filenames = import_key_data("./data/")
+            ecg_filenames = np.asarray(ecg_filenames)
+            age = np.asarray(age)
+            gender = np.asarray(gender)
+            ecg_len = np.asarray(ecg_len)
+            labels = np.asarray(labels)
 
-        age, gender, ecg_filenames, labels = only_ten_sec(ecg_len, age, gender, ecg_filenames, labels)
-        ecg_filenames, gender, age, labels = remove_nan_and_unknown_values(ecg_filenames, gender, age, labels)
-        ages = clean_up_age_data(age)
-        genders = clean_up_gender_data(gender)
+            age, gender, ecg_filenames, labels = only_ten_sec(ecg_len, age, gender, ecg_filenames, labels)
+            ecg_filenames, gender, age, labels = remove_nan_and_unknown_values(ecg_filenames, gender, age, labels)
+            ages = clean_up_age_data(age)
+            genders = clean_up_gender_data(gender)
 
-        data = []
-        for age, gender, label, filename in zip(ages, genders, labels, ecg_filenames):
+
+            data = []
+            for age, gender, filename in zip(ages, genders, ecg_filenames):
+                # print(age, gender, filename)
+                ecg_data = load_challenge_data(filename)[0]
+                if ecg_data.shape[1] != 5000: continue
+                if age >= 19:
+                    age_group = 0
+                elif 0 <= age < 19:
+                    age_group = 1
+                else:
+                    age_group = 2
+                data.append([age, gender, filename, age_group, ecg_data])
+
+            # data = list(zip(ages, genders, ecg_filenames))
+
+            # data 리스트를 DataFrame으로 변환
+            # df = pd.DataFrame(self.data, columns=['Age', 'Gender', 'Filename', 'ECG_Data'])
+            df = pd.DataFrame(self.data, columns=['AGE', 'GENDER', 'FILENAME', "Age_group", "ECG_Data"])
+            # df = pd.DataFrame(data, columns=['AGE', 'GENDER', 'FILENAME'])
+
+            self.df = df
+            self.numpy_folder = numpy_folder
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        filename = self.df.iloc[idx]['FILENAME']
+
+        # # Check if 'adult' or 'child' is in the filename
+        # if 'adult' in filename:
+        #     age_group = 0  # Let's say 0 for adult
+        # elif 'child' in filename:
+        #     age_group = 1  # And 1 for child
+        # else:
+        #     age_group = 2  # 2 for others (if any)
+
+        if self.numpy_folder is None:
             # ecg_data = load_challenge_data(filename)
+            # data = ecg_data[0]
+            data = self.df.iloc[idx]['ECG_Data']
+            age = self.df.iloc[idx]['AGE']
+            gender = self.df.iloc[idx]['GENDER']
+            age_group = self.df.iloc[idx]['GENDER']
+
+        else:
+            data = np.load(self.numpy_folder + '/' + filename + '.npy')
+            data = data.reshape(12, 5000)
+
+            age = self.df.iloc[idx]['AGE']
+
             if age >= 19:
                 age_group = 0
             elif 0 <= age < 19:
                 age_group = 1
             else:
                 age_group = 2
-            data.append([age, gender, label, filename, age_group])
 
-        self.data = data
-
-        # data 리스트를 DataFrame으로 변환
-        # df = pd.DataFrame(self.data, columns=['Age', 'Gender', 'Label', 'Filename', 'ECG_Data'])
-        df = pd.DataFrame(self.data, columns=['Age', 'Gender', 'Label', 'Filename', "Age_group"])
-
-        # Filename을 키로 설정
-        df.set_index('Filename', inplace=True)
-
-        self.df = df  #
-
-        print(df)
-        exit()
-
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        filename = self.df.iloc[idx]['FILENAME']
-
-        # Check if 'adult' or 'child' is in the filename
-        if 'adult' in filename:
-            age_group = 0  # Let's say 0 for adult
-        elif 'child' in filename:
-            age_group = 1  # And 1 for child
-        else:
-            age_group = 2  # 2 for others (if any)
-
-        data = np.load(self.numpy_folder + '/' + filename + '.npy')
-        data = data.reshape(12, 5000)
+            if self.df.iloc[idx]['GENDER'] == 'MALE':
+                gender = 0
+            elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
+                gender = 1
+            else:
+                gender = 2
 
         # data = filter_all_leads(data, fs)
         # data = z_score_normalization(data)
-
-        age = self.df.iloc[idx]['AGE']
-
-        if self.df.iloc[idx]['GENDER'] == 'MALE':
-            gender = 0
-        elif self.df.iloc[idx]['GENDER'] == 'FEMALE':
-            gender = 1
-        else:
-            gender = 2
 
         return torch.tensor(data.copy(), dtype=torch.float32), torch.tensor(gender, dtype=torch.float32), torch.tensor(age, dtype=torch.float32), torch.tensor(age_group, dtype=torch.float32)
 

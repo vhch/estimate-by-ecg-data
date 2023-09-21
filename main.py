@@ -46,8 +46,10 @@ numpy_folder_child = data_dir
 
 dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
 dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
+dataset_pre = CustomDataset()
 
-dataset = ConcatDataset([dataset_adult, dataset_child])
+
+dataset = ConcatDataset([dataset_adult, dataset_child, dataset_pre])
 
 
 # dataset = dataset_adult

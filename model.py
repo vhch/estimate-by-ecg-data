@@ -566,10 +566,10 @@ class CNNGRUAgePredictor(nn.Module):
         self.bn3 = nn.BatchNorm1d(128)
 
         # LSTM layer
-        self.gru = nn.GRU(input_size=128, hidden_size=64, num_layers=2, batch_first=True, dropout=0.5)
+        self.gru = nn.GRU(input_size=128, hidden_size=128, num_layers=2, batch_first=True, dropout=0.5)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(64 + 2, 32)
+        self.fc1 = nn.Linear(128 + 2, 32)
         self.fc2 = nn.Linear(32, 1)
 
     def forward(self, x, gender, age_group):
