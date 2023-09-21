@@ -178,7 +178,7 @@ for epoch in range(start_epoch, num_epochs):
     val_loss = 0.0
     with torch.no_grad():
         for batch_idx, (data, gender, targets, age_group) in enumerate(val_loader):
-            data, gender, targets, age_group = data.to(device), gender.to(device), targets.to(device), age_group.to(device)
+            data, gender, targets, age_group = data.to(device).float(), gender.to(device), targets.to(device), age_group.to(device)
             outputs = model(data, gender, age_group)
             val_loss += criterion_val(outputs.reshape(-1), targets.reshape(-1)).item()
     # print(outputs[:5], targets[:5])
