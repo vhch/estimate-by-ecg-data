@@ -470,14 +470,14 @@ class EnhancedCnntobert2(nn.Module):
         self.dropout = nn.Dropout(0.2)
 
         # self.fc1 = nn.Linear(512 + 2 + 24, 256)  # Added two more feature inputs: rr_means, rr_stds
-        self.fc1 = nn.Linear(512 + 2 + 12, 256)  # Added two more feature inputs: rr_means, rr_stds
+        self.fc1 = nn.Linear(512 + 2 + 64, 256)  # Added two more feature inputs: rr_means, rr_stds
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, 64)
         self.fc4 = nn.Linear(64, 1)
 
-        self.linear = nn.Linear(24, 12)
+        self.linear = nn.Linear(12*35, 64)
 
-    def forward(self, x, gender, age_group, rr_means, rr_stds, wave_ftt):
+    def forward(self, x, gender, age_group, features):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
@@ -486,7 +486,8 @@ class EnhancedCnntobert2(nn.Module):
 
         x = x.permute(0, 2, 1)
 
-        feature = F.relu(self.linear(torch.cat([rr_means, rr_stds], dim=1)))
+        features = features.reshape(-1, 12 * 35)
+        feature = F.relu(self.linear(features))
 
         outputs = self.bert(inputs_embeds=x)
         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
@@ -649,10 +650,12 @@ class CNNGRUAgePredictor(nn.Module):
         self.gru = nn.GRU(input_size=128, hidden_size=128, num_layers=2, batch_first=True, dropout=0.5)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(128 + 2 + 24, 64)
+        self.fc1 = nn.Linear(128 + 2 + 64, 64)
         self.fc2 = nn.Linear(64, 1)
 
-    def forward(self, x, gender, age_group, rr_means, rr_stds, wave_ftt):
+        self.linear = nn.Linear(12*35, 64)
+
+    def forward(self, x, gender, age_group, features):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.max_pool1d(x, 2)
         x = F.relu(self.bn2(self.conv2(x)))
@@ -669,8 +672,12 @@ class CNNGRUAgePredictor(nn.Module):
         # Only take the output from the final timetep
         x = h_n[-1]
 
+        features = features.reshape(-1, 12 * 35)
+        feature = F.relu(self.linear(features))
+
         # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
-        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
+        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)

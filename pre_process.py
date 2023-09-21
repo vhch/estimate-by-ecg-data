@@ -135,8 +135,7 @@ def filter_all_leads(data, fs):
 # Pan-Tompkins 알고리즘
 def pan_tompkins_qrs(ecg, sampling_rate=500):
     # 차분
-    differentiated = np.ediff1d(ecg)
-
+    differentiated = np.ediff1d(ecg) 
     # 제곱
     squared = differentiated ** 2
 
@@ -189,8 +188,8 @@ def extract_ecg_features(ecg_data, fs, filename):
             out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
             r_peaks = out['rpeaks']
         except ValueError:
-            r_peaks, _ = pan_tompkins_qrs(signal)  # fs는 샘플링 주파수입니다.
-            # r_peaks, _ = find_peaks(ecg_channel, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
+            # r_peaks = pan_tompkins_qrs(signal)  # fs는 샘플링 주파수입니다.
+            r_peaks, _ = find_peaks(signal, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
             print(signal)
             print(filename)
             print("Not enough beats to compute heart rate for the given signal.")
