@@ -174,12 +174,27 @@ class CustomDataset(Dataset):
 
         data = []
         for age, gender, label, filename in zip(ages, genders, labels, ecg_filenames):
-            ecg_data = load_challenge_data(filename)
-            data.append([age, gender, label, filename, ecg_data])
+            # ecg_data = load_challenge_data(filename)
+            if age >= 19:
+                age_group = 0
+            elif 0 <= age < 19:
+                age_group = 1
+            else:
+                age_group = 2
+            data.append([age, gender, label, filename, age_group])
 
         self.data = data
 
-        print(data)
+        # data 리스트를 DataFrame으로 변환
+        # df = pd.DataFrame(self.data, columns=['Age', 'Gender', 'Label', 'Filename', 'ECG_Data'])
+        df = pd.DataFrame(self.data, columns=['Age', 'Gender', 'Label', 'Filename', "Age_group"])
+
+        # Filename을 키로 설정
+        df.set_index('Filename', inplace=True)
+
+        self.df = df  #
+
+        print(df)
         exit()
 
 
