@@ -32,24 +32,24 @@ if not os.path.exists(checkpoint_dir):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
-data_dir = 'dataset/data_move5_wave'
-checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_move5_wave.pth'
+data_dir = 'dataset/data_filt_zscore'
+checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm2.pth'
 
 # Paths
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
 numpy_folder_adult = 'dataset/adult/train/'
-numpy_folder_adult = data_dir
+# numpy_folder_adult = data_dir
 
 csv_path_child = 'dataset/ECG_child_age_train.csv'
 numpy_folder_child = 'dataset/child/train/'
-numpy_folder_child = data_dir
+# numpy_folder_child = data_dir
 
-# dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
-# dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
-dataset_pre = CustomDataset()
+dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
+dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
+# dataset_pre = CustomDataset()
 
-dataset = CustomDataset()
-# dataset = ConcatDataset([dataset_adult, dataset_child, dataset_pre])
+# dataset = CustomDataset()
+dataset = ConcatDataset([dataset_adult, dataset_child])
 
 
 # dataset = dataset_adult
@@ -70,7 +70,8 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 
 # model = Model().to(device)
-model = CNNGRUAgePredictor().to(device)
+# model = CNNGRUAgePredictor().to(device)
+model = AttiaNetworkAge().to(device)
 # model = Cnn1d().to(device)
 
 # Loss and Optimizer

@@ -317,23 +317,10 @@ def process_and_save_data(input_folder, output_folder):
                 
                 # Load MAT file
                 data, _ = load_challenge_data(filepath)
-                print(type(data))
-                print(data.shape)
                 
                 # Filtering and normalization
                 data = filter_all_leads(data, 500.0)  # Assuming fs is 500.0
                 data = z_score_normalization(data)
-
-                all_features = extract_ecg_features(data, fs, filename)
-
-                print("Data shape:", data.shape)  # Data의 형태를 출력
-                print("Data type:", data.dtype)  # Data의 데이터 타입을 출력
-                print("Are there NaN values?", np.isnan(data).any())  # NaN 값이 있는지 확인
-                print("Are there Inf values?", np.isinf(data).any())  # 무한값이 있는지 확인
-
-
-                pca = perform_pca(data)
-                data = np.hstack((data, pca, all_features))
                 
                 # Save to NPY file
                 output_filepath = os.path.join(output_folder, filename.replace('.mat', '.npy'))

@@ -48,7 +48,7 @@ def z_score_normalization(data):
     for i in range(data.shape[0]):  # 각 lead에 대해서
         mean_val = np.mean(data[i])
         std_val = np.std(data[i])
-        
+
         if std_val == 0:  # 모든 값이 동일한 경우
             # print(data)
             normalized_data[i] = np.zeros_like(data[i])  # 0으로 설정
@@ -129,13 +129,13 @@ def find_rr_features(ecg_data, fs):
     for lead in range(leads):
         # 현재 채널의 ECG 데이터 선택
         ecg_channel = ecg_data[lead]
-        
+
         # R-peak 검출
         peaks, _ = find_peaks(ecg_channel, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
-        
+
         # RR 간격 계산
         rr_intervals = np.diff(peaks) / fs  # 샘플의 인덱스를 초로 변환
-        
+
         # RR 간격의 평균 및 표준편차 계산 후 리스트에 추가
         rr_means.append(np.mean(rr_intervals))
         rr_stds.append(np.std(rr_intervals))
@@ -159,6 +159,7 @@ class CustomDataset(Dataset):
             self.df = self.df[self.df['AGE'] <= 85]
         else:
             gender, age, labels, ecg_len, ecg_filenames = import_key_data("./data/")
+            # gender, age, labels, ecg_len, ecg_filenames = import_key_data("./pretrained_data/")
             ecg_filenames = np.asarray(ecg_filenames)
             age = np.asarray(age)
             gender = np.asarray(gender)
@@ -173,7 +174,6 @@ class CustomDataset(Dataset):
 
             data = []
             for age, gender, filename in zip(ages, genders, ecg_filenames):
-                # print(age, gender, filename)
                 ecg_data = load_challenge_data(filename)[0]
                 if ecg_data.shape[1] != 5000: continue
                 if age >= 19:
@@ -211,18 +211,23 @@ class CustomDataset(Dataset):
         #     age_group = 2  # 2 for others (if any)
 
         if self.numpy_folder is None:
-            ecg_data = load_challenge_data(filename)
+            path, ext = os.path.splitext(filename)
+            new_path = path.replace("./data", "./pretrained_data")
+            new_ext = ".npy"
+            filename = new_path + new_ext
+            # ecg_data = load_challenge_data(filename)
+            data = np.load(filename)
             # data = ecg_data[0]
             # data = self.df.iloc[idx]['ECG_Data']
-            data = ecg_data[0]
+            # data = ecg_data[0]
             # print(data)
 
             age = self.df.iloc[idx]['AGE']
             gender = self.df.iloc[idx]['GENDER']
             age_group = self.df.iloc[idx]['GENDER']
 
-            data = filter_all_leads(data, fs)
-            data = z_score_normalization(data)
+            # data = filter_all_leads(data, fs)
+            # data = z_score_normalization(data)
 
         else:
             data = np.load(self.numpy_folder + '/' + filename + '.npy')

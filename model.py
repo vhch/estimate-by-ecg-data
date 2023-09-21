@@ -552,6 +552,54 @@ class Cnn1d(nn.Module):
 
         return out
 
+class AttiaNetworkAge(nn.Module):
+    def __init__(self, samp_freq=500, time=10, num_leads=12):
+        super(AttiaNetworkAge, self).__init__()
+
+        # Temporal analysis blocks
+        self.conv_blocks = nn.ModuleList([
+            nn.Conv1d(num_leads, 16, kernel_size=7, padding=3),
+            nn.Conv1d(16, 16, kernel_size=5, padding=2),
+            nn.Conv1d(16, 32, kernel_size=5, padding=2),
+            nn.Conv1d(32, 32, kernel_size=5, padding=2),
+            nn.Conv1d(32, 64, kernel_size=5, padding=2),
+            nn.Conv1d(64, 64, kernel_size=3, padding=1),
+            nn.Conv1d(64, 64, kernel_size=3, padding=1),
+            nn.Conv1d(64, 64, kernel_size=3, padding=1),
+        ])
+        self.bn_blocks = nn.ModuleList([nn.BatchNorm1d(num_features) for num_features in [16, 16, 32, 32, 64, 64, 64, 64]])
+
+        # Spatial analysis block
+        self.conv_spatial = nn.Conv1d(64, 128, kernel_size=1)
+        self.bn_spatial = nn.BatchNorm1d(128)
+
+        # Fully connected blocks
+        self.fc1 = nn.Linear(128 * (samp_freq * time // 512) + 2, 128)  # 256 is the effective down-sampling factor
+        self.bn_fc1 = nn.BatchNorm1d(128)
+        self.fc2 = nn.Linear(128, 64)
+        self.bn_fc2 = nn.BatchNorm1d(64)
+
+        # Output layer
+        self.fc_out = nn.Linear(64, 1)
+
+    def forward(self, x, gender, age_group):
+        for conv, bn in zip(self.conv_blocks, self.bn_blocks):
+            x = F.relu(bn(conv(x)))
+            x = F.max_pool1d(x, 2)
+
+        x = F.relu(self.bn_spatial(self.conv_spatial(x)))
+        x = F.max_pool1d(x, 2)
+        x = x.view(x.size(0), -1)  # Flatten
+
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+
+        x = F.relu(self.bn_fc1(self.fc1(x)))
+        x = F.dropout(x, 0.2)
+        x = F.relu(self.bn_fc2(self.fc2(x)))
+        x = F.dropout(x, 0.2)
+
+        x = self.fc_out(x)
+        return x
 
 class CNNGRUAgePredictor(nn.Module):
     def __init__(self):
