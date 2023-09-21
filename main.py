@@ -46,9 +46,16 @@ def add_noise(data):
     noise = np.random.normal(0, 0.05, data.shape)
     return data + noise
 
+def lead_permutation(data):
+    """
+    data: 2D numpy array of shape (12, n), where n is the number of data points for each lead.
+    """
+    return np.random.permutation(data)
+
 def train_augment(x):
     x = time_shift(x, np.random.randint(-10, 10))
     x = add_noise(x)
+    x = lead_permutation(x)
     return x
 
 # Seed 값을 고정
@@ -68,7 +75,7 @@ if not os.path.exists(checkpoint_dir):
 
 
 # GPU 사용 설정
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 data_dir = 'dataset/data_filt_zscore'
@@ -94,9 +101,9 @@ dataset = ConcatDataset([dataset_adult, dataset_child])
 
 # dataset = dataset_adult
 # dataset = dataset_child
-batch_size = 128
+batch_size = 64
 num_epochs = 400
-accumulation_steps = 1
+accumulation_steps = 2
 
 
 train_len = int(0.9 * len(dataset))
