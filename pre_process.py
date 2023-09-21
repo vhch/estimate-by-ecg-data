@@ -207,7 +207,7 @@ def extract_ecg_features(ecg_data, fs):
 
 
         # 해당 리드의 모든 특성을 리스트에 추가
-        all_features.append([lead, lead_features])
+        all_features.append(lead_features)
 
 
     return all_features
