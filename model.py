@@ -469,10 +469,13 @@ class EnhancedCnntobert2(nn.Module):
         self.bert = BertModel(self.config)
         self.dropout = nn.Dropout(0.2)
 
-        self.fc1 = nn.Linear(512 + 2 + 24, 256)  # Added two more feature inputs: rr_means, rr_stds
+        # self.fc1 = nn.Linear(512 + 2 + 24, 256)  # Added two more feature inputs: rr_means, rr_stds
+        self.fc1 = nn.Linear(512 + 2 + 12, 256)  # Added two more feature inputs: rr_means, rr_stds
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, 64)
         self.fc4 = nn.Linear(64, 1)
+
+        self.linear = nn.Linear(24, 12)
 
     def forward(self, x, gender, age_group, rr_means, rr_stds, wave_ftt):
         x = self.layer1(x)
@@ -483,9 +486,12 @@ class EnhancedCnntobert2(nn.Module):
 
         x = x.permute(0, 2, 1)
 
+        feature = F.relu(self.linear(torch.cat([rr_means, rr_stds], dim=1)))
+
         outputs = self.bert(inputs_embeds=x)
         x = outputs['last_hidden_state'][:, 0, :]  # CLS token
-        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
+        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.dropout(x)

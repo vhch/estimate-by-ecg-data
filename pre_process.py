@@ -132,6 +132,24 @@ def filter_all_leads(data, fs):
 #     return np.array(rr_means), np.array(rr_stds)
 
 
+# Pan-Tompkins 알고리즘
+def pan_tompkins_qrs(ecg, sampling_rate=500):
+    # 차분
+    differentiated = np.ediff1d(ecg)
+
+    # 제곱
+    squared = differentiated ** 2
+
+    # 이동 평균
+    integration_window = int(sampling_rate * 0.150)  # 150 ms window
+    integrated = np.convolve(squared, np.ones(integration_window)/integration_window)
+
+    # 피크 찾기
+    r_peaks, _ = find_peaks(integrated, height=[0.6, 1.2])
+
+    return r_peaks
+
+
 def extract_statistical_features(coeffs):
     """Wavelet 계수에 대한 통계적 특성 추출"""
     mean = np.mean(coeffs)
@@ -158,7 +176,7 @@ def extract_basic_stats(segment):
     return [np.mean(segment), np.std(segment), np.min(segment), np.max(segment)]
 
 
-def extract_ecg_features(ecg_data, fs):
+def extract_ecg_features(ecg_data, fs, filename):
     leads = ecg_data.shape[0]
     all_features = []
 
@@ -167,8 +185,20 @@ def extract_ecg_features(ecg_data, fs):
         lead_features = []
 
         # R-peak 검출
-        out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
-        r_peaks = out['rpeaks']
+        try:
+            out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
+            r_peaks = out['rpeaks']
+        except ValueError:
+            r_peaks, _ = pan_tompkins_qrs(signal)  # fs는 샘플링 주파수입니다.
+            # r_peaks, _ = find_peaks(ecg_channel, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
+            print(signal)
+            print(filename)
+            print("Not enough beats to compute heart rate for the given signal.")
+            # Handle this case (e.g., skip this sample or use a different method)
+
+        # # R-peak 검출
+        # out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
+        # r_peaks = out['rpeaks']
 
         # R-R 간격
         rr_intervals = np.diff(r_peaks) / fs
@@ -249,8 +279,8 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         data = filter_all_leads(data, fs)
         data = z_score_normalization(data)
 
-        all_features = extract_ecg_features(data, fs)
-        print(np.array(all_features).shape)
+        all_features = extract_ecg_features(data, fs, filename)
+        # print(np.array(all_features).shape)
         # print(all_features)
         # print(np.array(wave).shape)
         # print(np.array(fourier).shape)
