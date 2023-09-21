@@ -33,7 +33,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 # Paths
-data_dir = 'dataset/data_move5'
+data_dir = 'dataset/data_filt_zscore'
 
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
 # numpy_folder_adult = 'dataset/adult/train/'
@@ -43,17 +43,18 @@ csv_path_child = 'dataset/ECG_child_age_train.csv'
 numpy_folder_child = data_dir
 
 dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
-dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
-dataset = ConcatDataset([dataset_adult, dataset_child])
+# dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
+# dataset = ConcatDataset([dataset_adult, dataset_child])
 
 dataset = dataset_adult
 
 # StratifiedKFold 설정
-n_splits = 10
+n_splits = 5
 skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=SEED)
 labels = [int(targets.item()) for data, gender, targets, age_group in dataset]
 
-checkpoint_path = 'Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_move5-2'
+# checkpoint_path = 'Cnntogru_adult_85cut_batch128_1e-3_filter_zscorenorm'
+checkpoint_path = 'Cnntobert_adult_85cut_batch128_1e-3_filter_zscorenorm'
 
 batch_size = 128
 num_epochs = 400
@@ -72,14 +73,16 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num_workers=4)
     
-    model = CNNGRUAgePredictor().to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+    # model = CNNGRUAgePredictor2().to(device)
+    model = Cnntobert3().to(device)
+    # optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+    optimizer = optim.AdamW(model.parameters(), lr=4e-4)
     scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
     best_val_loss = float('inf')
 
     for epoch in range(num_epochs):
-        if epoch == 55:
+        if epoch == 70:
             break
         model.train()
         train_loss = 0.0

@@ -33,7 +33,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 # Paths
-data_dir = 'dataset/data_move5'
+data_dir = 'dataset/data_filt_zscore'
 
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
 # numpy_folder_adult = 'dataset/adult/train/'
@@ -53,7 +53,7 @@ n_splits = 10
 skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=SEED)
 labels = [int(targets.item()) for data, gender, targets, age_group in dataset]
 
-checkpoint_path = 'Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_move5-2'
+checkpoint_path = 'Cnntogru_child_85cut_batch128_1e-3_filter_zscorenorm'
 
 batch_size = 128
 num_epochs = 400
@@ -68,18 +68,18 @@ best_fold = -1
 for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
     train_dataset = torch.utils.data.Subset(dataset, train_idx)
     val_dataset = torch.utils.data.Subset(dataset, val_idx)
-    
+
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num_workers=4)
-    
-    model = CNNGRUAgePredictor().to(device)
+
+    model = CNNGRUAgePredictor2().to(device)
     optimizer = optim.AdamW(model.parameters(), lr=1e-3)
     scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
     best_val_loss = float('inf')
 
     for epoch in range(num_epochs):
-        if epoch == 55:
+        if epoch == 100:
             break
         model.train()
         train_loss = 0.0
@@ -130,4 +130,3 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
             print(f"Fold: {fold+1}/{n_splits}, epoch:{epoch+1}, New best validation loss ({best_val_loss:.4f}), saving model: {checkpoint_dir}/{checkpoint_path}_{fold}.pth")
 
 print(f"Overall best validation loss: {best_val_loss:.4f} at fold {best_fold+1}")
-

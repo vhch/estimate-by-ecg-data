@@ -32,10 +32,10 @@ if not os.path.exists(checkpoint_dir):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
-data_dir = 'dataset/data_filt_zscore_feature'
+data_dir = 'dataset/data_filt_zscore_feature2'
 # checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_feature2.pth'
 # checkpoint_path = 'checkpoint/Cnntobert_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
-checkpoint_path = 'checkpoint/resnet_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
+checkpoint_path = 'checkpoint/resnet_concat_85cut_batch128_4e-4_filter_zscorenorm_feature2.pth'
 
 # Paths
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
@@ -70,10 +70,10 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 
 # model = Model().to(device)
-# model = CNNGRUAgePredictor().to(device)
+model = CNNGRUAgePredictor().to(device)
 # model = EnhancedCNNGRUAgePredictor().to(device)
 # model = Cnntobert2().to(device)
-model = ECGResNet().to(device)
+# model = ECGResNet().to(device)
 # model = Cnn1d().to(device)
 
 # Loss and Optimizer
@@ -81,8 +81,8 @@ model = ECGResNet().to(device)
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
 # optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5, betas=(0.9, 0.999))
-# optimizer = optim.AdamW(model.parameters(), lr=1e-3)
-optimizer = optim.AdamW(model.parameters(), lr=4e-4)
+optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+# optimizer = optim.AdamW(model.parameters(), lr=4e-4)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
 best_val_loss = float('inf')
@@ -108,11 +108,19 @@ for epoch in range(start_epoch, num_epochs):
     for batch_idx, (data, gender, targets, age_group) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")):
         data, gender, targets, age_group = data.to(device), gender.to(device), targets.to(device), age_group.to(device)
         # print(data.shape)
+        if torch.isnan(data).any() or torch.isinf(data).any():
+            nan_positions = torch.isnan(data)
+            inf_positions = torch.isinf(data)
+
+            print("Positions with NaN values in data: ", torch.nonzero(nan_positions))
+            print("Positions with Inf values in data: ", torch.nonzero(inf_positions))
+            print(f"Warning: NaN or Inf found in data on epoch {epoch+1}")
         features = data[:, :, 5000:]
         data = data[:, :, :5000]
 
         with autocast():
             output = model(data, gender, age_group, features)
+            # print(features[0,0,:])
             # print(data.shape)
             # print(gender.shape)
             # print(targets.shape)
