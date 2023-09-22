@@ -135,7 +135,7 @@ class CustomDataset(Dataset):
         self.numpy_folder = numpy_folder
 
         # Filter by age
-        self.df = self.df[self.df['AGE'] <= 85]
+        self.df = self.df[self.df['AGE'] <= 100]
 
         # # Remove entries with all-zero data
         # valid_indices = []

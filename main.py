@@ -32,7 +32,7 @@ if not os.path.exists(checkpoint_dir):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
-data_dir = 'dataset/data_filt_zscore_feature'
+data_dir = 'dataset/data_filt_zscore_feature2'
 checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_feature2.pth'
 # checkpoint_path = 'checkpoint/Cnntobert_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
 

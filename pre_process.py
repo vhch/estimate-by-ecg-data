@@ -31,7 +31,7 @@ def z_score_normalization(data):
         
         if std_val == 0:  # 모든 값이 동일한 경우
             # print(data)
-            normalized_data[i] = np.zeros_like(data[i])  # 0으로 설정
+            normalized_data[i] = np.zeros_like(data[i]) + 1e-10 # 0으로 설정
         else:
             normalized_data[i] = (data[i] - mean_val) / std_val
     return normalized_data
@@ -134,8 +134,12 @@ def filter_all_leads(data, fs):
 
 # Pan-Tompkins 알고리즘
 def pan_tompkins_qrs(ecg, sampling_rate=500):
+    if ecg.size == 0:
+        print("ECG array is empty.")
+    if ecg.size == 0:
+        print("ECG array is empty.")
     # 차분
-    differentiated = np.ediff1d(ecg) 
+    differentiated = np.ediff1d(ecg)
     # 제곱
     squared = differentiated ** 2
 
@@ -188,12 +192,16 @@ def extract_ecg_features(ecg_data, fs, filename):
             out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
             r_peaks = out['rpeaks']
         except ValueError:
-            # r_peaks = pan_tompkins_qrs(signal)  # fs는 샘플링 주파수입니다.
-            r_peaks, _ = find_peaks(signal, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
-            print(signal)
-            print(filename)
-            print("Not enough beats to compute heart rate for the given signal.")
+            print(f"An error occurred in file: {filename}")
+            return None  # 문제가 생긴 경우 None 반환
+            # continue
             # Handle this case (e.g., skip this sample or use a different method)
+
+        # r_peaks = pan_tompkins_qrs(signal)  # fs는 샘플링 주파수입니다.
+        if len(r_peaks) < 2:
+            print("r_peaks < 2")
+
+        # r_peaks, _ = find_peaks(signal, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
 
         # # R-peak 검출
         # out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
@@ -275,10 +283,13 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         data = data.reshape(12, 5000)
         
         # 함수를 적용합니다.
-        data = filter_all_leads(data, fs)
-        data = z_score_normalization(data)
+        # data = filter_all_leads(data, fs)
+        # data = z_score_normalization(data)
 
         all_features = extract_ecg_features(data, fs, filename)
+        if all_features is None:  # 문제가 생긴 경우
+            print(f"Skipping file: {filename}")
+            continue  # 현재 파일을 건너뛰고 다음 파일로
         # print(np.array(all_features).shape)
         # print(all_features)
         # print(np.array(wave).shape)
