@@ -296,19 +296,20 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         # print(np.array(fourier).shape)
         # print(np.array(rr_means).shape)
         # print(np.array(rr_stds).shape)
-        pca = perform_pca(data)
-        data = np.hstack((data, pca, all_features))
+        # pca = perform_pca(data)
+        data = np.hstack((data, all_features))
 
         # 결과를 .npy로 저장합니다.
         np.save(output_path, data)
 
 
-data_dir = "dataset/data_filt_zscore_feature2"
-# data_dir = "dataset/data_test"
+# data_dir = "dataset/data_filt_zscore_feature2"
+data_dir = "dataset/valid_feature"
 
 # 함수를 호출하여 작업을 실행합니다.
-process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
-process_and_save_npy_files('dataset/ECG_child_age_train.csv', 'dataset/child/train', data_dir)
+process_and_save_npy_files('dataset/submission.csv', 'dataset/valid', data_dir)
+# process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
+# process_and_save_npy_files('dataset/ECG_child_age_train.csv', 'dataset/child/train', data_dir)
 
 print(f"task end : {data_dir}")
 
