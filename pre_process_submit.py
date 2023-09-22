@@ -193,13 +193,15 @@ def extract_ecg_features(ecg_data, fs, filename):
             r_peaks = out['rpeaks']
         except ValueError:
             print(f"An error occurred in file: {filename}")
-            return None  # 문제가 생긴 경우 None 반환
+            r_peaks = [0]
+            # return None  # 문제가 생긴 경우 None 반환
             # continue
             # Handle this case (e.g., skip this sample or use a different method)
 
         # r_peaks = pan_tompkins_qrs(signal)  # fs는 샘플링 주파수입니다.
         if len(r_peaks) < 2:
             print("r_peaks < 2")
+            rr_intervals = np.array([0])
 
         # r_peaks, _ = find_peaks(signal, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
 
@@ -303,11 +305,12 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         np.save(output_path, data)
 
 
-data_dir = "dataset/data_filt_zscore_feature2"
-# data_dir = "dataset/data_test"
+# data_dir = "dataset/data_filt_zscore_feature2"
+data_dir = "dataset/valid_feature"
 
 # 함수를 호출하여 작업을 실행합니다.
-process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
-process_and_save_npy_files('dataset/ECG_child_age_train.csv', 'dataset/child/train', data_dir)
+process_and_save_npy_files('dataset/submission.csv', 'dataset/valid', data_dir)
+# process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
+# process_and_save_npy_files('dataset/ECG_child_age_train.csv', 'dataset/child/train', data_dir)
 
 print(f"task end : {data_dir}")
