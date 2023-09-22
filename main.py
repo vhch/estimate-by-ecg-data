@@ -96,8 +96,8 @@ if not os.path.exists(checkpoint_dir):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
-data_dir = 'dataset/data_filt_zscore'
-checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_timeshift_addnoise_randomscale_permutation.pth'
+data_dir = 'dataset/data_filt_zscore_feature2'
+checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_featureaa.pth'
 # checkpoint_path = 'checkpoint/Cnntobert_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
 # checkpoint_path = 'checkpoint/resnet_concat_85cut_batch128_4e-4_filter_zscorenorm_feature2.pth'
 
@@ -128,8 +128,8 @@ val_len = len(dataset) - train_len
 
 train_dataset, val_dataset = random_split(dataset, [train_len, val_len])
 
-train_dataset = AugmentedSubset(train_dataset, transform=train_augment)
-val_dataset = AugmentedSubset(val_dataset, transform=None)
+# train_dataset = AugmentedSubset(train_dataset, transform=train_augment)
+# val_dataset = AugmentedSubset(val_dataset, transform=None)
 
 
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
@@ -137,7 +137,8 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 
 
 # model = Model().to(device)
-model = CNNGRUAgePredictor().to(device)
+# model = CNNGRUAgePredictor().to(device)
+model = EnhancedCNNGRUAgePredictor3().to(device)
 # model = EnhancedCNNGRUAgePredictor().to(device)
 # model = Cnntobert2().to(device)
 # model = ECGResNet().to(device)
@@ -148,8 +149,8 @@ model = CNNGRUAgePredictor().to(device)
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
 # optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5, betas=(0.9, 0.999))
-optimizer = optim.AdamW(model.parameters(), lr=4e-3)
-# optimizer = optim.AdamW(model.parameters(), lr=4e-4)
+# optimizer = optim.AdamW(model.parameters(), lr=4e-3)
+optimizer = optim.AdamW(model.parameters(), lr=4e-4)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
 best_val_loss = float('inf')
@@ -167,6 +168,7 @@ if os.path.exists(checkpoint_path):
     start_epoch = checkpoint['epoch'] + 1
     best_val_loss = checkpoint['best_val_loss']
 
+
 # Train the model
 for epoch in range(start_epoch, num_epochs):
     model.train()
@@ -174,14 +176,10 @@ for epoch in range(start_epoch, num_epochs):
 
     for batch_idx, (data, gender, targets, age_group) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")):
         data, gender, targets, age_group = data.to(device), gender.to(device), targets.to(device), age_group.to(device)
+        if torch.isnan(data).any():
+            print("There are NaN values in your training tensor.")
         with autocast():
             output = model(data, gender, age_group)
-            # print(features[0,0,:])
-            # print(data.shape)
-            # print(gender.shape)
-            # print(targets.shape)
-            # print(age_group.shape)
-            # print(output.shape)
             loss = criterion(output.reshape(-1), targets.reshape(-1))
 
         train_loss += loss.item()

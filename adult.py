@@ -53,7 +53,7 @@ n_splits = 10
 skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=SEED)
 labels = [int(targets.item()) for data, gender, targets, age_group in dataset]
 
-checkpoint_path = 'Cnntogru_adult_100cut_batch128_1e-3_filter_zscorenorm'
+checkpoint_path = 'Cnntogru_adult_100cut_batch128_1e-3_filter_zscorenorm_feature'
 # checkpoint_path = 'Cnntobert_adult_85cut_batch128_1e-3_filter_zscorenorm'
 # checkpoint_path = 'Cnntobert_adult_85cut_batch128_1e-3_filter_zscorenorm'
 
@@ -74,11 +74,11 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num_workers=4)
 
-    model = CNNGRUAgePredictor2().to(device)
-    # model = EnhancedCNNGRUAgePredictor().to(device)
+    # model = CNNGRUAgePredictor2().to(device)
+    model = EnhancedCNNGRUAgePredictor2().to(device)
     # model = Cnntobert4().to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=1e-3)
-    # optimizer = optim.AdamW(model.parameters(), lr=4e-4)
+    # optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+    optimizer = optim.AdamW(model.parameters(), lr=4e-4)
     scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
     best_val_loss = float('inf')

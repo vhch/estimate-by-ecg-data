@@ -204,10 +204,10 @@ class InferenceDataset(Dataset):
             age_group = 2  # 2 for others (if any)
 
         data = np.load(self.numpy_folder + '/' + filename + '.npy')
-        data = data.reshape(12, 5000)
+        data = data.reshape(12, -1)
 
-        data = filter_all_leads(data, fs)
-        data = z_score_normalization(data)
+        # data = filter_all_leads(data, fs)
+        # data = z_score_normalization(data)
 
 
 
