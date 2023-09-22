@@ -8,7 +8,7 @@ from model import *
 
 # 모델 로드
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = CNNGRUAgePredictor()
+model = EnhancedCNNGRUAgePredictor3()
 checkpoint = torch.load('checkpoint/Cnntogru_concat_85cut_batch128_1e-3.pth')
 model.load_state_dict(checkpoint['model_state_dict'])
 # model.load_state_dict(torch.load('best_model_checkpoint.pth'))

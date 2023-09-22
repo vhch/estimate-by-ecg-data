@@ -97,8 +97,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 data_dir = 'dataset/data_filt_zscore_feature2'
+# checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_featureaa4.pth'
 checkpoint_path = 'checkpoint/Cnntogru_concat_85cut_batch128_1e-3_filter_zscorenorm_featureaa.pth'
-# checkpoint_path = 'checkpoint/Cnntobert_concat_85cut_batch128_4e-4_filter_zscorenorm_feature.pth'
 # checkpoint_path = 'checkpoint/resnet_concat_85cut_batch128_4e-4_filter_zscorenorm_feature2.pth'
 
 # Paths
@@ -149,7 +149,7 @@ model = EnhancedCNNGRUAgePredictor3().to(device)
 criterion = nn.MSELoss()  # Mean Squared Error for regression
 criterion_val = nn.L1Loss()
 # optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5, betas=(0.9, 0.999))
-# optimizer = optim.AdamW(model.parameters(), lr=4e-3)
+# optimizer = optim.AdamW(model.parameters(), lr=1e-3)
 optimizer = optim.AdamW(model.parameters(), lr=4e-4)
 scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 

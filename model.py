@@ -849,12 +849,14 @@ class CNNGRUAgePredictor2(nn.Module):
         self.gru = nn.GRU(input_size=256, hidden_size=128, num_layers=2, batch_first=True, dropout=0.5)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(128 + 1, 64)
+        self.fc1 = nn.Linear(128 + 2 + 64, 64)
         self.fc2 = nn.Linear(64, 1)
 
-        # self.linear = nn.Linear(12*35, 64)
+        self.linear = nn.Linear(12*35, 64)
 
     def forward(self, x, gender, age_group):
+        feature = x[:, :, 5000:]
+        x = x[:, :, :5000]
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.max_pool1d(x, 2)
         x = F.relu(self.bn2(self.conv2(x)))
@@ -871,13 +873,13 @@ class CNNGRUAgePredictor2(nn.Module):
         # Only take the output from the final timetep
         x = h_n[-1]
 
-        # features = features.reshape(-1, 12 * 35)
-        # feature = F.relu(self.linear(features))
+        feature = torch.log1p(torch.abs(feature))
+        # feature = F.tanh(feature)
+        feature = feature.reshape(-1, 12 * 35)
+        # feature = self.linear(feature)
+        feature = F.relu(self.linear(feature))
 
-        x = torch.cat([x, gender.unsqueeze(1)], dim=1)
-        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
-        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), rr_means, rr_stds], dim=1)
-        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
@@ -995,7 +997,9 @@ class EnhancedCNNGRUAgePredictor3(nn.Module):
 
         # Fully connected layers
         self.fc1 = nn.Linear(256 + 2 + 64, 128)
+        # self.dropout1 = nn.Dropout(0.1)
         self.fc2 = nn.Linear(128, 64)
+        # self.dropout2 = nn.Dropout(0.1)
         self.fc3 = nn.Linear(64, 1)
 
     def forward(self, x, gender, age_group):
@@ -1017,8 +1021,8 @@ class EnhancedCNNGRUAgePredictor3(nn.Module):
         feature = torch.log1p(torch.abs(feature))
         # feature = F.tanh(feature)
         feature = feature.reshape(-1, 12 * 35)
-        # feature = self.linear(feature)
         feature = F.relu(self.linear(feature))
+        # feature = F.leaky_relu(self.linear(feature))
 
 
         # x = torch.cat([x, gender.unsqueeze(1)], dim=1)
@@ -1026,7 +1030,9 @@ class EnhancedCNNGRUAgePredictor3(nn.Module):
         x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
 
         x = F.relu(self.fc1(x))
+        # x = self.dropout1(x)
         x = F.relu(self.fc2(x))
+        # x = self.dropout2(x)
         x = self.fc3(x)
 
         return x

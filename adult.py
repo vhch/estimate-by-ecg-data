@@ -43,10 +43,10 @@ csv_path_child = 'dataset/ECG_child_age_train.csv'
 numpy_folder_child = data_dir
 
 dataset_adult = CustomDataset(csv_path_adult, numpy_folder_adult)
-# dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
-# dataset = ConcatDataset([dataset_adult, dataset_child])
+dataset_child = CustomDataset(csv_path_child, numpy_folder_child)
+dataset = ConcatDataset([dataset_adult, dataset_child])
 
-dataset = dataset_adult
+# dataset = dataset_adult
 
 # StratifiedKFold 설정
 n_splits = 10
@@ -74,8 +74,8 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num_workers=4)
 
-    # model = CNNGRUAgePredictor2().to(device)
-    model = EnhancedCNNGRUAgePredictor2().to(device)
+    model = CNNGRUAgePredictor2().to(device)
+    # model = EnhancedCNNGRUAgePredictor2().to(device)
     # model = Cnntobert4().to(device)
     # optimizer = optim.AdamW(model.parameters(), lr=1e-3)
     optimizer = optim.AdamW(model.parameters(), lr=4e-4)

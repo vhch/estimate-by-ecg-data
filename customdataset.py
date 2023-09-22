@@ -182,6 +182,7 @@ class CustomDataset(Dataset):
 class InferenceDataset(Dataset):
     def __init__(self, csv_path, numpy_folder, file_list=None):
         self.df = pd.read_csv(csv_path)
+        self.file_list = file_list
 
         # 파일 목록이 제공된 경우 해당 파일만 선택
         if file_list is not None:
