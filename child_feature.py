@@ -33,7 +33,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 scaler = GradScaler()
 
 # Paths
-data_dir = 'dataset/data_filt_zscore'
+data_dir = 'dataset/data_filt_zscore_feature2'
 
 csv_path_adult = 'dataset/ECG_adult_age_train.csv'
 # numpy_folder_adult = 'dataset/adult/train/'
@@ -53,11 +53,13 @@ n_splits = 10
 skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=SEED)
 labels = [int(targets.item()) for data, gender, targets, age_group in dataset]
 
-checkpoint_path = 'Cnntogru_child_85cut_batch128_1e-3_filter_zscorenorm'
+checkpoint_path = 'Cnntogru_child_100cut_batch128_4e-4_filter_zscorenorm_feature128'
+# checkpoint_path = 'Cnntogru_child_100cut_batch128_1e-3_filter_zscorenorm_feature-log'
 
 batch_size = 128
 num_epochs = 400
 accumulation_steps = 1
+max_norm = 1.0
 
 # Loss and Optimizer
 criterion = nn.MSELoss()
@@ -66,20 +68,23 @@ criterion_val = nn.L1Loss()
 best_fold = -1
 
 for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
+    # if fold != 1:continue
     train_dataset = torch.utils.data.Subset(dataset, train_idx)
     val_dataset = torch.utils.data.Subset(dataset, val_idx)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num_workers=4)
 
-    model = CNNGRUAgePredictor2().to(device)
-    optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+    # model = Cnntobert2().to(device)
+    model = EnhancedCNNGRUAgePredictor2().to(device)
+    # optimizer = optim.AdamW(model.parameters(), lr=4e-5)
+    optimizer = optim.AdamW(model.parameters(), lr=4e-4)
     scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=len(train_loader) * num_epochs / accumulation_steps)
 
     best_val_loss = float('inf')
 
     for epoch in range(num_epochs):
-        if epoch == 100:
+        if epoch == 350:
             break
         model.train()
         train_loss = 0.0
@@ -94,6 +99,10 @@ for fold, (train_idx, val_idx) in enumerate(skf.split(dataset, labels)):
             scaler.scale(loss).backward()
 
             if (batch_idx + 1) % accumulation_steps == 0:
+                if max_norm > 0:
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad()
