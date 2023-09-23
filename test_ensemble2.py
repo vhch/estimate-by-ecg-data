@@ -8,43 +8,15 @@ from model import *
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-num_folds1 = 9
-num_folds2 = 8
-child_checkpoints = [f'checkpoint/check/Cnntogru_child_100cut_batch128_1e-3_filter_zscorenorm_feature_{i}.pth' for i in range(num_folds1)]
-adult_checkpoints = [f'checkpoint/check/EnhancedCnntogru_adult_100cut_batch128_1e-3_filter_zscorenorm_feature_{i}.pth' for i in range(num_folds2)]
+num_folds1 = 10
+num_folds2 = 10
+child_checkpoints = [f'checkpoint/check2/Cnntogru_child_100cut_batch128_4e-4_filter_zscorenorm_feature128_{i}.pth' for i in range(num_folds1)]
+adult_checkpoints = [f'checkpoint/check2/EnhancedCnntogru_adult_100cut_batch128_4e-4_filter_zscorenorm_feature128_{i}.pth' for i in range(num_folds2)]
 
 csv_path = 'dataset/submission.csv'
-numpy_folder = 'dataset/valid_feature/'
+# numpy_folder = 'dataset/valid_feature/'
+numpy_folder = 'dataset/valid_feature2/'
 
-
-# # 나이 추론 함수
-# def infer_age(checkpoints, loader, model):
-#     predicted_ages = []
-#
-#     # # 모델을 저장할 임시 변수 초기화
-#     # temp_model = CNNGRUAgePredictor2().to(device).half()
-#
-#     with torch.no_grad():
-#         for data, gender, age_group in loader:
-#             # data, gender, age_group = data.to(device).half(), gender.to(device).half(), age_group.to(device).half()
-#             data, gender, age_group = data.to(device), gender.to(device), age_group.to(device)
-#
-#             fold_predictions = []
-#
-#             for checkpoint_path in checkpoints:
-#                 # 모델 상태 로드
-#                 checkpoint = torch.load(checkpoint_path)
-#                 model.load_state_dict(checkpoint['model_state_dict'])
-#                 model.eval()
-#
-#                 outputs = model(data, gender, age_group)
-#                 print(outputs)
-#                 fold_predictions.append(outputs.cpu().numpy().flatten())
-#
-#             mean_predictions = np.mean(fold_predictions, axis=0)
-#             predicted_ages.extend(mean_predictions)
-#
-#     return predicted_ages
 
 # 나이 추론 함수
 def infer_age(checkpoints, loader, model, dataset):
@@ -98,7 +70,7 @@ adult_dataset = InferenceDataset(csv_path=csv_path, numpy_folder=numpy_folder, f
 child_loader = DataLoader(child_dataset, batch_size=32)
 adult_loader = DataLoader(adult_dataset, batch_size=32)
 
-child_model = EnhancedCNNGRUAgePredictor3().to(device)
+child_model = EnhancedCNNGRUAgePredictor4().to(device)
 adult_model = EnhancedCNNGRUAgePredictor3().to(device)
 
 child_predicted_ages = infer_age(child_checkpoints, child_loader, child_model, child_dataset)
