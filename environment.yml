@@ -1,4 +1,4 @@
-name: test-sj
+name: test
 channels:
   - defaults
 dependencies:
