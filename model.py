@@ -17,7 +17,8 @@ class Model(nn.Module):
             nn.Linear(128, 1)
         )
 
-    def forward(self, x):
+    def forward(self, x, gender, age_group):
+        x = x[:,:,:5000]
         x = x.reshape(-1, 5000 * 12)
         return self.fc(x)
 
@@ -995,10 +996,9 @@ class EnhancedCNNGRUAgePredictor2(nn.Module):
 
         return x
 
-class EnhancedCNNGRUAgePredictor3(nn.Module):
+class EnhancedCNNGRUAgePredictor(nn.Module):
     def __init__(self):
         super().__init__()
-
         # 1D CNN layers
         self.conv1 = nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7)
         self.bn1 = nn.BatchNorm1d(64)

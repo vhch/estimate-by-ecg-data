@@ -139,6 +139,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, pin_memory=True, num
 # model = Model().to(device)
 # model = EnhancedCNNGRUAgePredictor3().to(device)
 model = EnhancedCnntobert2().to(device)
+model = Model().to(device)
 
 # Loss and Optimizer
 # criterion = nn.HuberLoss()
