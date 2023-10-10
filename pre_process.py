@@ -7,6 +7,7 @@ from biosppy.signals import ecg  # biosppy 라이브러리를 임포트
 import pywt
 import scipy
 from sklearn.decomposition import PCA
+import argparse
 
 
 def min_max_scaling(data):
@@ -31,7 +32,7 @@ def z_score_normalization(data):
 
         if std_val == 0:  # 모든 값이 동일한 경우
             # print(data)
-            normalized_data[i] = np.zeros_like(data[i]) + 1e-10 # 0으로 설정
+            normalized_data[i] = np.zeros_like(data[i]) # 0으로 설정
         else:
             normalized_data[i] = (data[i] - mean_val) / std_val
     return normalized_data
@@ -102,35 +103,6 @@ def filter_all_leads(data, fs):
     return filtered_data
 
 
-# def find_rr_features(ecg_data, fs):
-#     # 가정: `ecg_data`는 shape (12, 5000)의 ECG 데이터
-#     leads = ecg_data.shape[0]
-#
-#     # 결과를 저장하기 위한 리스트 초기화
-#     rr_means = []
-#     rr_stds = []
-#
-#     for lead in range(leads):
-#         # 현재 채널의 ECG 데이터 선택
-#         ecg_channel = ecg_data[lead]
-#
-#         # R-peak 검출
-#         peaks, _ = find_peaks(ecg_channel, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
-#
-#         # RR 간격 계산
-#         rr_intervals = np.diff(peaks) / fs  # 샘플의 인덱스를 초로 변환
-#
-#         if len(rr_intervals) == 0:  # No valid RR intervals
-#             rr_means.append(0)
-#             rr_stds.append(0)
-#         else:
-#             # RR 간격의 평균 및 표준편차 계산 후 리스트에 추가
-#             rr_means.append(np.mean(rr_intervals))
-#             rr_stds.append(np.std(rr_intervals))
-#
-#
-#     return np.array(rr_means), np.array(rr_stds)
-
 
 # Pan-Tompkins 알고리즘
 def pan_tompkins_qrs(ecg, sampling_rate=500):
@@ -186,26 +158,25 @@ def extract_ecg_features(ecg_data, fs, filename):
     for lead in range(leads):
         signal = ecg_data[lead]
         lead_features = []
+        check = False
 
         # R-peak 검출
         try:
             out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
             r_peaks = out['rpeaks']
         except ValueError:
-            print(f"An error occurred in file: {filename}")
-            return None  # 문제가 생긴 경우 None 반환
+            # print(f"An error occurred in file: {filename}")
+            r_peaks = [0]
+            check = True
+            # return None  # 문제가 생긴 경우 None 반환
             # continue
             # Handle this case (e.g., skip this sample or use a different method)
 
         # r_peaks = pan_tompkins_qrs(signal)  # fs는 샘플링 주파수입니다.
         if len(r_peaks) < 2:
-            print("r_peaks < 2")
+            # print("r_peaks < 2")
+            rr_intervals = np.array([0])
 
-        # r_peaks, _ = find_peaks(signal, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
-
-        # # R-peak 검출
-        # out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
-        # r_peaks = out['rpeaks']
 
         # R-R 간격
         rr_intervals = np.diff(r_peaks) / fs
@@ -241,11 +212,13 @@ def extract_ecg_features(ecg_data, fs, filename):
         #
         #     lead_features.append((extract_basic_stats(p_wave_segment)))
         #     lead_features.append((extract_basic_stats(t_wave_segment)))
+        
+        # if check:
+        #     print(lead_features)
 
 
         # 해당 리드의 모든 특성을 리스트에 추가
         all_features.append(lead_features)
-
 
     return all_features
 
@@ -260,9 +233,6 @@ def perform_pca(data, n_components=2):
     return pca_result
 
 
-fs = 500.0  # sampling frequency
-lowcut = 0.5
-highcut = 50.0
 
 def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
     # 입력 csv를 불러옵니다.
@@ -282,20 +252,15 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         data = np.load(input_path)
         data = data.reshape(12, 5000)
 
-        # 함수를 적용합니다.
+        # # 함수를 적용합니다.
         # data = filter_all_leads(data, fs)
         # data = z_score_normalization(data)
 
         all_features = extract_ecg_features(data, fs, filename)
         if all_features is None:  # 문제가 생긴 경우
-            print(f"Skipping file: {filename}")
+            # print(f"Skipping file: {filename}")
             continue  # 현재 파일을 건너뛰고 다음 파일로
-        # print(np.array(all_features).shape)
-        # print(all_features)
-        # print(np.array(wave).shape)
-        # print(np.array(fourier).shape)
-        # print(np.array(rr_means).shape)
-        # print(np.array(rr_stds).shape)
+
         pca = perform_pca(data)
         data = np.hstack((data, pca, all_features))
 
@@ -303,11 +268,23 @@ def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
         np.save(output_path, data)
 
 
-data_dir = "dataset/data_filt_zscore_feature2"
-# data_dir = "dataset/data_test"
+fs = 500.0  # sampling frequency
+lowcut = 0.5
+highcut = 50.0
+
+# -- argument
+parser = argparse.ArgumentParser()
+parser.add_argument('--csv_file', type=str, default='dataset/submission.csv', help="csv file path")
+parser.add_argument('--input_folder', type=str, default='dataset/valid', help="numpy file directory")
+parser.add_argument('--output_folder', type=str, default='dataset/valid_pre', help="preprocess output numpy file directory")
+args = parser.parse_args()
+
+
+csv_file = args.csv_file
+input_dir = args.input_folder
+output_dir = args.output_folder
 
 # 함수를 호출하여 작업을 실행합니다.
-process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
-process_and_save_npy_files('dataset/ECG_child_age_train.csv', 'dataset/child/train', data_dir)
+process_and_save_npy_files(csv_file, input_dir, output_dir)
 
-print(f"task end : {data_dir}")
+print(f"preprocess end : {output_dir}")
