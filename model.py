@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import BertModel, BertTokenizer, BertConfig
+from typing import Tuple
 
 
 # Model Definition
@@ -552,54 +553,8 @@ class Cnn1d(nn.Module):
 
         return out
 
-class AttiaNetworkAge(nn.Module):
-    def __init__(self, samp_freq=500, time=10, num_leads=12):
-        super(AttiaNetworkAge, self).__init__()
 
-        # Temporal analysis blocks
-        self.conv_blocks = nn.ModuleList([
-            nn.Conv1d(num_leads, 16, kernel_size=7, padding=3),
-            nn.Conv1d(16, 16, kernel_size=5, padding=2),
-            nn.Conv1d(16, 32, kernel_size=5, padding=2),
-            nn.Conv1d(32, 32, kernel_size=5, padding=2),
-            nn.Conv1d(32, 64, kernel_size=5, padding=2),
-            nn.Conv1d(64, 64, kernel_size=3, padding=1),
-            nn.Conv1d(64, 64, kernel_size=3, padding=1),
-            nn.Conv1d(64, 64, kernel_size=3, padding=1),
-        ])
-        self.bn_blocks = nn.ModuleList([nn.BatchNorm1d(num_features) for num_features in [16, 16, 32, 32, 64, 64, 64, 64]])
 
-        # Spatial analysis block
-        self.conv_spatial = nn.Conv1d(64, 128, kernel_size=1)
-        self.bn_spatial = nn.BatchNorm1d(128)
-
-        # Fully connected blocks
-        self.fc1 = nn.Linear(128 * (samp_freq * time // 512) + 2, 128)  # 256 is the effective down-sampling factor
-        self.bn_fc1 = nn.BatchNorm1d(128)
-        self.fc2 = nn.Linear(128, 64)
-        self.bn_fc2 = nn.BatchNorm1d(64)
-
-        # Output layer
-        self.fc_out = nn.Linear(64, 1)
-
-    def forward(self, x, gender, age_group):
-        for conv, bn in zip(self.conv_blocks, self.bn_blocks):
-            x = F.relu(bn(conv(x)))
-            x = F.max_pool1d(x, 2)
-
-        x = F.relu(self.bn_spatial(self.conv_spatial(x)))
-        x = F.max_pool1d(x, 2)
-        x = x.view(x.size(0), -1)  # Flatten
-
-        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
-
-        x = F.relu(self.bn_fc1(self.fc1(x)))
-        x = F.dropout(x, 0.2)
-        x = F.relu(self.bn_fc2(self.fc2(x)))
-        x = F.dropout(x, 0.2)
-
-        x = self.fc_out(x)
-        return x
 
 class CNNGRUAgePredictor(nn.Module):
     def __init__(self):
@@ -792,5 +747,288 @@ class ECGResNet(nn.Module):
 
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
+
+        return x
+
+
+class AttiaNetworkAge(nn.Module):
+    def __init__(self, samp_freq=500, time=10, num_leads=12):
+        super(AttiaNetworkAge, self).__init__()
+
+        # Temporal analysis blocks
+        self.conv_blocks = nn.ModuleList([
+            nn.Conv1d(num_leads, 16, kernel_size=7, padding=3),
+            nn.Conv1d(16, 16, kernel_size=5, padding=2),
+            nn.Conv1d(16, 32, kernel_size=5, padding=2),
+            nn.Conv1d(32, 32, kernel_size=5, padding=2),
+            nn.Conv1d(32, 64, kernel_size=5, padding=2),
+            nn.Conv1d(64, 64, kernel_size=3, padding=1),
+            nn.Conv1d(64, 64, kernel_size=3, padding=1),
+            nn.Conv1d(64, 64, kernel_size=3, padding=1),
+        ])
+        self.bn_blocks = nn.ModuleList([nn.BatchNorm1d(num_features) for num_features in [16, 16, 32, 32, 64, 64, 64, 64]])
+
+        # Spatial analysis block
+        self.conv_spatial = nn.Conv1d(64, 128, kernel_size=1)
+        self.bn_spatial = nn.BatchNorm1d(128)
+
+        # Fully connected blocks
+        # self.fc1 = nn.Linear(128 * (samp_freq * time // 512) + 2, 128)  # 256 is the effective down-sampling factor
+        self.fc1 = nn.Linear(128 * (samp_freq * time // 512), 128)  # 256 is the effective down-sampling factor
+        self.bn_fc1 = nn.BatchNorm1d(128)
+        self.fc2 = nn.Linear(128, 64)
+        self.bn_fc2 = nn.BatchNorm1d(64)
+
+        # Output layer
+        self.fc_out = nn.Linear(64, 1)
+
+    def forward(self, x, gender, age_group):
+        for conv, bn in zip(self.conv_blocks, self.bn_blocks):
+            x = F.relu(bn(conv(x)))
+            x = F.max_pool1d(x, 2)
+
+        x = F.relu(self.bn_spatial(self.conv_spatial(x)))
+        x = F.max_pool1d(x, 2)
+        x = x.view(x.size(0), -1)  # Flatten
+
+        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+
+        x = F.relu(self.bn_fc1(self.fc1(x)))
+        # x = F.dropout(x, 0.2)
+        x = F.relu(self.bn_fc2(self.fc2(x)))
+        # x = F.dropout(x, 0.2)
+
+        x = self.fc_out(x)
+        return x
+
+class InceptionModule(nn.Module):
+    def __init__(self, in_channels, nb_filters, kernel_size=40, bottleneck_size=32, stride=1, activation=nn.ReLU()):
+        super(InceptionModule, self).__init__()
+
+        self.use_bottleneck = in_channels > 1
+        if self.use_bottleneck:
+            self.bottleneck = nn.Conv1d(in_channels, bottleneck_size, kernel_size=1, stride=1, bias=False)
+
+        kernel_size_s = [kernel_size // (2 ** i) for i in range(3)]
+        self.kernel_size_s = kernel_size_s
+        self.conv_list = nn.ModuleList()
+
+        for ks in kernel_size_s:
+            self.conv_list.append(nn.Conv1d(bottleneck_size if self.use_bottleneck else in_channels,
+                                            nb_filters, ks, stride=stride, padding=0, bias=False))
+
+        self.max_pool = nn.MaxPool1d(3, stride=stride, padding=1)
+        self.conv_6 = nn.Conv1d(bottleneck_size if self.use_bottleneck else in_channels, nb_filters, kernel_size=1, padding=0, bias=False)
+
+        self.batch_norm = nn.BatchNorm1d(nb_filters * 4)
+        self.activation = activation
+
+    def forward(self, x):
+        # input_inception = self.bottleneck(x) if self.use_bottleneck else x
+        x = self.bottleneck(x) if self.use_bottleneck else x
+
+        # conv_list = [conv(input_inception) for conv in self.conv_list]
+
+        conv_list = []
+        for i, conv in enumerate(self.conv_list):
+            ks = self.kernel_size_s[i]
+            if ks % 2 == 0:  # 커널 사이즈가 짝수인 경우
+                padding = ks // 2 - 1
+                x_padded = F.pad(x, (padding, padding + 1), 'constant', 0)  # 한쪽에만 패딩 추가
+                out = conv(x_padded)
+            else:
+                out = conv(x)
+            conv_list.append(out)
+
+        max_pool_1 = self.max_pool(x)
+        conv_6 = self.conv_6(max_pool_1)
+
+        conv_list.append(conv_6)
+        # print(conv_list[0].shape)
+        # print(conv_6.shape)
+        x = torch.cat(conv_list, 1)
+        x = self.batch_norm(x)
+        x = self.activation(x)
+        return x
+
+
+class ShortcutLayer(nn.Module):
+    def __init__(self, in_channels, out_channels, activation=nn.ReLU()):
+        super(ShortcutLayer, self).__init__()
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size=1, padding=0, bias=False)
+        self.batch_norm = nn.BatchNorm1d(out_channels)
+        self.activation = activation
+
+    def forward(self, x, out):
+        shortcut_y = self.conv(x)
+        shortcut_y = self.batch_norm(shortcut_y)
+        x = shortcut_y + out
+        x = self.activation(x)
+        return x
+
+
+class InceptionTime(nn.Module):
+    def __init__(self, input_shape: Tuple[int, int], nb_classes: int, depth: int = 6, use_residual: bool = True):
+        super(InceptionTime, self).__init__()
+
+        self.depth = depth
+        self.use_residual = use_residual
+
+        in_channels = input_shape[0]
+        # self.input_layer = nn.Sequential(
+        #     nn.Conv1d(in_channels, 32, kernel_size=1, stride=1, bias=False),
+        #     nn.BatchNorm1d(32),
+        #     nn.ReLU()
+        # )
+
+        self.inception_blocks = nn.ModuleList()
+        self.shortcut_layers = nn.ModuleList()
+
+        for d in range(depth):
+            if d == 0:
+                self.inception_blocks.append(InceptionModule(12, 32))
+            else:
+                self.inception_blocks.append(InceptionModule(32 * 4, 32))
+            if use_residual and d == 2:
+                self.shortcut_layers.append(ShortcutLayer(12, 32 * 4))
+                self.shortcut_layers.append(ShortcutLayer(32 * 4, 32 * 4))
+
+        self.gap_layer = nn.AdaptiveAvgPool1d(1)
+        self.output_layer = nn.Linear(32 * 4, nb_classes)
+
+    def forward(self, x, gender, age_group):
+        # x = self.input_layer(x)
+        input_res = x
+
+        for d in range(self.depth):
+            x = self.inception_blocks[d](x)
+
+            if self.use_residual and d % 3 == 2:
+                if len(self.shortcut_layers) > d // 3:
+                    x = self.shortcut_layers[d // 3](input_res, x)
+                input_res = x
+
+        x = self.gap_layer(x).squeeze(-1)
+        x = self.output_layer(x)
+        return x
+
+
+class EnhancedCNNGRUAgePredictor(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        # 1D CNN layers
+        self.conv1 = nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7)
+        self.bn1 = nn.BatchNorm1d(64)
+        self.conv2 = nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.conv3 = nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7)
+        self.bn3 = nn.BatchNorm1d(256)
+        self.conv4 = nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7)
+        self.bn4 = nn.BatchNorm1d(512)
+
+        # LSTM layer
+        self.gru = nn.GRU(input_size=512, hidden_size=256, num_layers=4, batch_first=True, dropout=0.5)
+
+        self.linear = nn.Linear(12*35, 64)
+
+        # Fully connected layers
+        # self.fc1 = nn.Linear(256 + 64, 128)
+        self.fc1 = nn.Linear(256 + 2 + 64, 128)
+        # self.fc1 = nn.Linear(256, 128)
+        # self.fc1 = nn.Linear(256 + 2, 128)
+        # self.fc1 = nn.Linear(256 + 1, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 1)
+
+    def forward(self, x, gender, age_group):
+        feature = x[:, :, 5000:]
+        x = x[:, :, :5000]
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = F.max_pool1d(x, 2)
+
+        x = x.permute(0, 2, 1)
+        _, h_n = self.gru(x)
+        x = h_n[-1]
+
+        feature = torch.log1p(torch.abs(feature))
+        feature = feature.reshape(-1, 12 * 35)
+        feature = F.relu(self.linear(feature))
+
+        # x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+        x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
+        # x = torch.cat([x, feature], dim=1)
+
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+
+        return x
+
+
+
+class EnhancedCNNGRUAgePredictor2(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        # 1D CNN layers
+        self.conv1 = nn.Conv1d(12, 64, kernel_size=15, stride=1, padding=7)
+        self.bn1 = nn.BatchNorm1d(64)
+        self.conv2 = nn.Conv1d(64, 128, kernel_size=15, stride=1, padding=7)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.conv3 = nn.Conv1d(128, 256, kernel_size=15, stride=1, padding=7)
+        self.bn3 = nn.BatchNorm1d(256)
+        self.conv4 = nn.Conv1d(256, 512, kernel_size=15, stride=1, padding=7)
+        self.bn4 = nn.BatchNorm1d(512)
+
+        # LSTM layer
+        self.gru = nn.GRU(input_size=512, hidden_size=256, num_layers=4, batch_first=True, dropout=0.5)
+
+        self.linear = nn.Linear(12*35, 64)
+
+        # Fully connected layers
+        # self.fc1 = nn.Linear(256 + 64, 128)
+        # self.fc1 = nn.Linear(256 + 2 + 64, 128)
+        self.fc1 = nn.Linear(256, 128)
+        # self.fc1 = nn.Linear(256 + 2, 128)
+        # self.fc1 = nn.Linear(256 + 1, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 1)
+
+    def forward(self, x, gender, age_group):
+        # feature = x[:, :, 5000:]
+        # x = x[:, :, :5000]
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = F.max_pool1d(x, 2)
+
+        x = x.permute(0, 2, 1)
+        _, h_n = self.gru(x)
+        x = h_n[-1]
+
+        # feature = torch.log1p(torch.abs(feature))
+        # feature = feature.reshape(-1, 12 * 35)
+        # feature = F.relu(self.linear(feature))
+
+        # x = torch.cat([x, gender.unsqueeze(1)], dim=1)
+        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1)], dim=1)
+        # x = torch.cat([x, gender.unsqueeze(1), age_group.unsqueeze(1), feature], dim=1)
+        # x = torch.cat([x, feature], dim=1)
+
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
 
         return x

@@ -1,12 +1,15 @@
 import os
 import numpy as np
-import pandas as pd
+from ecg_age.src.helpers.helpers import *
+from ecg_age.src.models.models import *
 from torch.utils.data import Dataset, DataLoader, random_split, ConcatDataset
 from scipy.signal import butter, lfilter, freqz, iirnotch, find_peaks, medfilt
 from biosppy.signals import ecg  # biosppy 라이브러리를 임포트
 import pywt
 import scipy
+from scipy.io import savemat
 from sklearn.decomposition import PCA
+from tqdm.auto import tqdm
 
 
 def min_max_scaling(data):
@@ -187,52 +190,56 @@ def extract_ecg_features(ecg_data, fs, filename):
         try:
             out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
             r_peaks = out['rpeaks']
+
+            # # R-peak 검출
+            # out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
+            # r_peaks = out['rpeaks']
+
+            # R-R 간격
+            rr_intervals = np.diff(r_peaks) / fs
+            # lead_features.append(('rr_mean', np.mean(rr_intervals)))
+            # lead_features.append(('rr_std', np.std(rr_intervals)))
+            lead_features.append(np.mean(rr_intervals))
+            lead_features.append(np.std(rr_intervals))
+
+            # QRS 복잡도 (간단한 예: QRS 폭)
+            qrs_widths = np.diff(r_peaks)
+            # lead_features.append(('qrs_mean_width', np.mean(qrs_widths)))
+            # lead_features.append(('qrs_std_width', np.std(qrs_widths)))
+            lead_features.append((np.mean(qrs_widths)))
+            lead_features.append((np.std(qrs_widths)))
+
+            # FFT 특성
+            fft_values = scipy.fft.fft(signal)
+            fft_freq = scipy.fft.fftfreq(len(fft_values), 1/fs)
+            lead_features.append((fft_freq[np.argmax(np.abs(fft_values))]))
+
+            # 통계적 특성
+            lead_features.append((np.mean(signal)))
+            lead_features.append((np.std(signal)))
+            lead_features.append((scipy.stats.skew(signal)))
+
+            # Wavelet 특성
+            wavelet_features = extract_wavelet_features(signal)
+            lead_features.extend((wavelet_features))
+
+            # for r in r_peaks:
+            #     p_wave_segment = signal[max(0, r-50):r]  # 예: R-peak 전 50개 샘플을 P-wave로 가정
+            #     t_wave_segment = signal[r:min(len(signal), r+50)]  # 예: R-peak 후 50개 샘플을 T-wave로 가정
+            #
+            #     lead_features.append((extract_basic_stats(p_wave_segment)))
+            #     lead_features.append((extract_basic_stats(t_wave_segment)))
+
         except ValueError:
             # r_peaks = pan_tompkins_qrs(signal)  # fs는 샘플링 주파수입니다.
             r_peaks, _ = find_peaks(signal, distance=fs/2.5)  # fs는 샘플링 주파수입니다.
             print(signal)
             print(filename)
             print("Not enough beats to compute heart rate for the given signal.")
+            lead_features = [0] * 33
             # Handle this case (e.g., skip this sample or use a different method)
 
-        # # R-peak 검출
-        # out = ecg.ecg(signal=signal, sampling_rate=fs, show=False)
-        # r_peaks = out['rpeaks']
 
-        # R-R 간격
-        rr_intervals = np.diff(r_peaks) / fs
-        # lead_features.append(('rr_mean', np.mean(rr_intervals)))
-        # lead_features.append(('rr_std', np.std(rr_intervals)))
-        lead_features.append(np.mean(rr_intervals))
-        lead_features.append(np.std(rr_intervals))
-
-        # QRS 복잡도 (간단한 예: QRS 폭)
-        qrs_widths = np.diff(r_peaks)
-        # lead_features.append(('qrs_mean_width', np.mean(qrs_widths)))
-        # lead_features.append(('qrs_std_width', np.std(qrs_widths)))
-        lead_features.append((np.mean(qrs_widths)))
-        lead_features.append((np.std(qrs_widths)))
-
-        # FFT 특성
-        fft_values = scipy.fft.fft(signal)
-        fft_freq = scipy.fft.fftfreq(len(fft_values), 1/fs)
-        lead_features.append((fft_freq[np.argmax(np.abs(fft_values))]))
-
-        # 통계적 특성
-        lead_features.append((np.mean(signal)))
-        lead_features.append((np.std(signal)))
-        lead_features.append((scipy.stats.skew(signal)))
-
-        # Wavelet 특성
-        wavelet_features = extract_wavelet_features(signal)
-        lead_features.extend((wavelet_features))
-
-        # for r in r_peaks:
-        #     p_wave_segment = signal[max(0, r-50):r]  # 예: R-peak 전 50개 샘플을 P-wave로 가정
-        #     t_wave_segment = signal[r:min(len(signal), r+50)]  # 예: R-peak 후 50개 샘플을 T-wave로 가정
-        #
-        #     lead_features.append((extract_basic_stats(p_wave_segment)))
-        #     lead_features.append((extract_basic_stats(t_wave_segment)))
 
 
         # 해당 리드의 모든 특성을 리스트에 추가
@@ -256,47 +263,56 @@ fs = 500.0  # sampling frequency
 lowcut = 0.5
 highcut = 50.0
 
-def process_and_save_npy_files(csv_path, numpy_folder, output_folder):
-    # 입력 csv를 불러옵니다.
-    df = pd.read_csv(csv_path)
+def process_and_save_mat_files(data_path, output_folder):
+    genders, ages, labels, ecg_lens, ecg_filenames = import_key_data(data_path)
 
-    # 결과를 저장할 폴더가 존재하지 않는 경우 생성합니다.
+    ecg_filenames = np.asarray(ecg_filenames)
+    ages = np.asarray(ages)
+    genders = np.asarray(genders)
+    ecg_lens = np.asarray(ecg_lens)
+    labels = np.asarray(labels)
+
+    ages, genders, ecg_filenames, labels = only_ten_sec(ecg_lens, ages, genders, ecg_filenames, labels)
+    ecg_filenames, genders, ages, labels = remove_nan_and_unknown_values(ecg_filenames, genders, ages, labels)
+    ages = clean_up_age_data(ages)
+    genders = clean_up_gender_data(genders)
+
+    data_list = []
+    for age, gender, filename in zip(ages, genders, ecg_filenames):
+        ecg_data = load_challenge_data(filename)[0]
+        if ecg_data.shape[1] != 5000: continue
+        if age >= 19:
+            age_group = 0
+        elif 0 <= age < 19:
+            age_group = 1
+        else:
+            age_group = 2
+        data_list.append([age, gender, filename, age_group, ecg_data])
+
+    print(len(data_list))
+
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    # 모든 파일에 대하여
-    for idx in range(len(df)):
-        filename = df.iloc[idx]['FILENAME']
-        input_path = os.path.join(numpy_folder, filename + '.npy')
+    for data_entry in tqdm(data_list, desc="Processing data"):
+        age, gender, filename, age_group, ecg_data = data_entry
+        filename = os.path.splitext(os.path.basename(filename))[0]
         output_path = os.path.join(output_folder, filename + '.npy')
 
-        # .npy 파일을 불러옵니다.
-        data = np.load(input_path)
-        data = data.reshape(12, 5000)
+        ecg_data = filter_all_leads(ecg_data, fs)
+        ecg_data = z_score_normalization(ecg_data)
 
-        # 함수를 적용합니다.
-        data = filter_all_leads(data, fs)
-        data = z_score_normalization(data)
+        all_features = extract_ecg_features(ecg_data, fs, filename)
+        pca = perform_pca(ecg_data)
+        # print(ecg_data.shape)
+        # print(pca.shape)
+        # print(all_features.shape)
+        ecg_data = np.hstack((ecg_data, pca, all_features))
 
-        all_features = extract_ecg_features(data, fs, filename)
-        # print(np.array(all_features).shape)
-        # print(all_features)
-        # print(np.array(wave).shape)
-        # print(np.array(fourier).shape)
-        # print(np.array(rr_means).shape)
-        # print(np.array(rr_stds).shape)
-        pca = perform_pca(data)
-        data = np.hstack((data, pca, all_features))
+        # Save the processed data as .mat file
+        np.save(output_path, ecg_data)
 
-        # 결과를 .npy로 저장합니다.
-        np.save(output_path, data)
-
-
-data_dir = "dataset/data_filt_zscore_feature2"
-# data_dir = "dataset/data_test"
-
-# 함수를 호출하여 작업을 실행합니다.
-process_and_save_npy_files('dataset/ECG_adult_age_train.csv', 'dataset/adult/train', data_dir)
-process_and_save_npy_files('dataset/ECG_child_age_train.csv', 'dataset/child/train', data_dir)
-
-print(f"task end : {data_dir}")
+output_dir = "data_pre"
+# output_dir = "data_test_pre"
+process_and_save_mat_files('data', output_dir)
+print(f"task end : {output_dir}")

@@ -12,13 +12,13 @@ from model import *
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # model = AttiaNetworkAge()
-model = EnhancedCNNGRUAgePredictor().to(device)
+model = EnhancedCNNGRUAgePredictor2().to(device)
 # input_shape = (12, 500 * 10)  # ECG 데이터 크기에 맞게 설정
 # nb_classes = 1  # 나이 예측을 위한 출력 뉴런 수
 # model = InceptionTime(input_shape, nb_classes).to(device)
 
 # model_path = 'checkpoint/Attianosam.pth'
-model_path = 'checkpoint/Cnntogru_sample3.pth'
+model_path = 'checkpoint/Cnntogru_sample2.pth'
 checkpoint = torch.load(model_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 # model.load_state_dict(torch.load('best_model_checkpoint.pth'))
@@ -27,7 +27,7 @@ model.eval()
 
 
 # 데이터셋 및 데이터로더 설정
-infer_dataset = CustomDataset2(data_path='data_test')
+infer_dataset = CustomDataset(data_path='data_test')
 infer_loader = DataLoader(infer_dataset, batch_size=32)
 criterion = nn.L1Loss()  # Mean Squared Error for regression
 
